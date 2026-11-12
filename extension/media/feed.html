@@ -16,7 +16,7 @@
   #lv { flex: none; display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 7px; border: 1px solid currentColor; border-radius: 4px; line-height: 1.25; }
   #lv b { font-size: .62em; letter-spacing: .1em; opacity: .75; }
   #lvn { font-weight: 700; font-variant-numeric: tabular-nums; }
-  #pct { flex: none; min-width: 4ch; text-align: right; font-size: .72em; opacity: .7; font-variant-numeric: tabular-nums; }
+  #pct { flex: none; min-width: 4ch; white-space: nowrap; text-align: right; font-size: .72em; opacity: .7; font-variant-numeric: tabular-nums; }
   #tabs { display: flex; gap: 2px; padding: 0 6px; overflow-x: auto; scrollbar-width: none; }
   #tabs[hidden] { display: none; }
   .tab { font: inherit; font-size: .85em; white-space: nowrap; color: var(--vscode-descriptionForeground); background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 4px 8px; cursor: pointer; }
@@ -36,6 +36,11 @@
   #xp.gain i::after { animation: shimmer .9s ease-out; }
   @keyframes shimmer { to { transform: translateX(100%); } }
   @media (prefers-reduced-motion: reduce) { #xp.gain i::after { animation: none; } #xp i { transition: none; } }
+  #upd { flex: none; align-self: flex-start; margin: 4px 0 0; padding: 1px 8px; border-radius: 10px; font: inherit; font-size: .72em; cursor: pointer; border: 1px solid currentColor; color: var(--vscode-button-foreground); background: var(--vscode-button-background); animation: pulse 1.8s ease-in-out infinite; }
+  #upd[hidden] { display: none; }
+  .vw #upd { color: var(--bg); background: var(--mint); border-color: transparent; box-shadow: 0 0 12px rgba(124, 245, 200, .7); font-weight: 600; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  @media (prefers-reduced-motion: reduce) { #upd { animation: none; } }
   #toast { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 6px); padding: 3px 10px; border-radius: 4px; font-size: .85em; white-space: nowrap; color: var(--vscode-button-foreground); background: var(--vscode-button-background); pointer-events: none; }
   .proj { display: none; margin-right: 6px; font-size: .74em; opacity: .7; }
   body.multi.flow .proj { display: inline; }
@@ -149,6 +154,7 @@
         <div id="xp"><i></i></div>
         <span id="pct">0%</span>
       </div>
+      <button id="upd" hidden></button>
     </div>
   </div>
   <nav id="tabs" hidden></nav>
@@ -252,7 +258,7 @@
     $('lvn').textContent = x.level;
     $('level').title = x.tip;
     $('xp').firstElementChild.style.width = `${Math.round(x.progress * 1000) / 10}%`;
-    $('pct').textContent = `${Math.floor(x.progress * 100)}%`;
+    $('pct').textContent = `${x.into} / ${x.span} xp`;
     if (x.level === lastXp.level && x.progress > lastXp.progress) { // ganhou XP: reflexo passa na barra
       const b = $('xp');
       b.classList.remove('gain');
@@ -261,6 +267,12 @@
     }
     lastXp = x;
   }
+  function setUpdate(u) {
+    const b = $('upd');
+    b.hidden = !u;
+    if (u) { b.textContent = `★ ${u.text}`; b.title = u.tip; }
+  }
+  $('upd').addEventListener('click', () => { setUpdate(null); vscode.postMessage({ type: 'ackUpdate' }); });
   function levelUp(level) {
     const t = $('toast');
     t.textContent = `★ ${UI.levelUp} lv ${level}`;
@@ -291,7 +303,7 @@
     if (m.type === 'following') setFollowing(m.following);
     if (m.type === 'xp') setXp(m.xp);
     if (m.type === 'levelup') levelUp(m.level);
-    if (m.type === 'init') { following = m.following; projects = m.projects; setXp(m.xp); setSkin(m.skin); setUi(m.ui); renderTabs(); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
+    if (m.type === 'init') { following = m.following; projects = m.projects; setXp(m.xp); setUpdate(m.update); setSkin(m.skin); setUi(m.ui); renderTabs(); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
     if (m.type === 'add') add(m.item, true);
     if (m.type === 'todos') showTodos(m.todos);
     if (m.type === 'state') $('state').textContent = m.state;

@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { pick, Strings } from './i18n';
-import { levelOf, fmtDuration } from './level';
+import { levelOf, fmtDuration, fmtXp } from './level';
 import { Hit, bashCwd, findHits, grepSoleFile, isFile, readTarget, resolvePath, responseText } from './parse';
 
 // O que o plugin manda: o formato dos hooks do Claude Code, mais os eventos próprios (AssistantText, Stop com reason).
@@ -63,6 +63,7 @@ let todos: Todo[] = [];
 let agent = false; // o passo sendo mostrado veio de um subagente
 let out: vscode.OutputChannel, status: vscode.StatusBarItem, hl: vscode.TextEditorDecorationType, face: vscode.TextEditorDecorationType;
 let view: vscode.WebviewView | null = null;
+let version = '';
 let extUri: vscode.Uri, store: vscode.Memento | undefined, wsState: vscode.Memento;
 
 // Abas: "flow" segue tudo; senão, só o projeto (cwd da sessão) escolhido mexe no editor e na legenda.
@@ -99,6 +100,7 @@ function makeHighlight(): vscode.TextEditorDecorationType {
 
 export function activate(ctx: vscode.ExtensionContext): void {
   extUri = ctx.extensionUri;
+  version = String(ctx.extension.packageJSON.version ?? '');
   store = ctx.globalState;
   wsState = ctx.workspaceState;
   xpSeconds = store.get('botTv.xpSeconds', 0);
@@ -151,7 +153,8 @@ function resolveWebviewView(v: vscode.WebviewView): void {
     .replace(/%CSP%/g, v.webview.cspSource)
     .replace(/%FONT%/g, v.webview.asWebviewUri(vscode.Uri.joinPath(media, 'fonts', 'roboto-mono-latin-wght-normal.woff2')).toString());
   v.webview.onDidReceiveMessage((m: { type: string; project?: string; file?: string; line?: number }) => {
-    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui, following, projects: projectList(), xp: xpInfo() });
+    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui, following, projects: projectList(), xp: xpInfo(), update: updateInfo() });
+    if (m.type === 'ackUpdate') store?.update('botTv.seenVersion', version);
     if (m.type === 'toggle') toggle();
     if (m.type === 'follow' && m.project) {
       following = m.project;
@@ -203,7 +206,18 @@ const projectList = () => [...projects].map(([key, name]) => ({ key, name }));
 
 function xpInfo() {
   const i = levelOf(xpSeconds);
-  return { level: i.level, progress: i.progress, tip: T().xpTip(i.level, fmtDuration(xpSeconds), fmtDuration(i.toNext)) };
+  return {
+    level: i.level, progress: i.progress, into: fmtXp(i.into), span: fmtXp(i.span),
+    tip: T().xpTip(i.level, i.xp.toLocaleString('en-US'), xpNextTotal(i), fmtDuration(xpSeconds)),
+  };
+}
+const xpNextTotal = (i: ReturnType<typeof levelOf>) => (i.xp + i.toNext).toLocaleString('en-US');
+
+// Aviso de versão nova: aparece no painel até o usuário clicar nele. Quem já tinha XP guardado e nunca viu aviso também vê.
+function updateInfo() {
+  const seen = store?.get<string>('botTv.seenVersion');
+  if (!version || seen === version || (seen === undefined && xpSeconds === 0)) return null;
+  return { text: T().updated(version), tip: T().updatedTip(version) };
 }
 
 function trackXp(ev: HookEvent): void {

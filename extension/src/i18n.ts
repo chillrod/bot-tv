@@ -13,7 +13,8 @@ const en = {
   editing: (f: string) => `editing ${f}`, edited: (f: string) => `edited ${f}`, fileWritten: 'file written', diffTitle: (b: string) => `${b} ← AI`,
   failed: (t: string) => `${t} failed`,
   paused: 'paused', tooltip: 'bot_tv — click to pause/resume', portBusy: 'port in use',
-  xpTip: (l: number, worked: string, left: string) => `lv ${l} · ${worked} of agent work · ${left} to lv ${l + 1}`,
+  xpTip: (l: number, xp: string, next: string, worked: string) => `lv ${l} · ${xp} / ${next} xp · ${worked} of agent work`,
+  updated: (v: string) => `updated to v${v}`, updatedTip: (v: string) => `bot_tv v${v}: MMO-style XP curve (Tibia formula, no level cap). Click to dismiss.`,
   // vai para o webview: só texto, nada de função
   ui: {
     labels: { prompt: 'you', text: 'ai', thinking: 'thinking', read: 'reading', search: 'searching', hits: 'found', bash: 'command', output: 'output', edit: 'edited', plan: 'plan', agent: 'subagent', web: 'web', wait: 'waiting', fail: 'failed', stop: 'end', tool: 'tool' },
@@ -39,7 +40,8 @@ const pt: Strings = {
   editing: (f) => `editando ${f}`, edited: (f) => `editou ${f}`, fileWritten: 'arquivo escrito', diffTitle: (b) => `${b} ← IA`,
   failed: (t) => `${t} falhou`,
   paused: 'pausado', tooltip: 'bot_tv — clique para pausar/retomar', portBusy: 'porta ocupada',
-  xpTip: (l, worked, left) => `lv ${l} · ${worked} de IA trabalhando · faltam ${left} pro lv ${l + 1}`,
+  xpTip: (l, xp, next, worked) => `lv ${l} · ${xp} / ${next} xp · ${worked} de IA trabalhando`,
+  updated: (v) => `atualizado para v${v}`, updatedTip: (v) => `bot_tv v${v}: XP estilo MMO (fórmula do Tibia, sem limite de nível). Clique para fechar.`,
   ui: {
     labels: { prompt: 'você', text: 'ia', thinking: 'raciocínio', read: 'lendo', search: 'buscando', hits: 'achou', bash: 'comando', output: 'saída', edit: 'editou', plan: 'plano', agent: 'subagente', web: 'web', wait: 'esperando', fail: 'falhou', stop: 'fim', tool: 'ferramenta' },
     empty: 'nada no ar ainda. rode o Claude Code com o plugin bot-tv.',
