@@ -3,7 +3,7 @@
   "displayName": "bot_tv",
   "description": "Watch Claude Code work: every read, search, command and edit, live in your editor.",
   "publisher": "chillrod",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": {

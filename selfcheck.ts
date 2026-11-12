@@ -37,19 +37,27 @@ assert.strictEqual(readTarget('grep -rn x lib | head -5', cwd), null, 'head in a
 
 fs.rmSync(root, { recursive: true });
 
-// ---- level: 10 min to lv 2, then 10 more per level, no cap ----
-const { levelOf, fmtDuration } = require('./extension/out/level.js');
+// ---- level: Tibia curve, xp = 50/3·(L³ − 6L² + 17L − 12), 1 xp per second, no cap ----
+const { levelOf, xpFor, fmtXp, fmtDuration } = require('./extension/out/level.js');
+assert.strictEqual(xpFor(1), 0);
+assert.strictEqual(xpFor(2), 100, 'tibia: lv 2 at 100 xp');
+assert.strictEqual(xpFor(8), 4200, 'tibia: lv 8 at 4200 xp');
+assert.strictEqual(xpFor(10), 9300);
 assert.strictEqual(levelOf(0).level, 1);
-assert.strictEqual(levelOf(599).level, 1);
-assert.strictEqual(levelOf(600).level, 2, '10 min of agent work = lv 2');
-assert.strictEqual(levelOf(1799).level, 2);
-assert.strictEqual(levelOf(1800).level, 3, '+20 min = lv 3');
-for (const s of [0, 1, 599, 600, 12345, 1e6, 1e9]) {
-  const { level, progress, toNext } = levelOf(s);
-  assert.ok(progress >= 0 && progress < 1 && toNext > 0, `progress in range at ${s}s`);
-  assert.ok(levelOf(s + toNext).level === level + 1, `toNext lands on the next level at ${s}s`);
+assert.strictEqual(levelOf(99).level, 1);
+assert.strictEqual(levelOf(100).level, 2);
+assert.strictEqual(levelOf(9299).level, 9);
+assert.strictEqual(levelOf(9300).level, 10);
+for (let l = 1; l < 200; l++) assert.ok(xpFor(l + 1) - xpFor(l) <= xpFor(l + 2) - xpFor(l + 1), 'no level asks less than the last');
+for (const s of [0, 1, 99, 100, 12345, 1e6, 1e9, 1e12]) {
+  const { level, progress, toNext, into, span } = levelOf(s);
+  assert.ok(progress >= 0 && progress < 1 && toNext > 0 && into + toNext === span, `progress in range at ${s}`);
+  assert.ok(levelOf(s + toNext).level === level + 1, `toNext lands on the next level at ${s}`);
 }
-assert.ok(levelOf(1e9).level > 1000, 'no level cap');
+assert.ok(levelOf(1e12).level > 1000, 'no level cap');
+assert.strictEqual(fmtXp(842), '842');
+assert.strictEqual(fmtXp(12_500), '12,5k');
+assert.strictEqual(fmtXp(3_200_000), '3,2M');
 assert.strictEqual(fmtDuration(42), '42s');
 assert.strictEqual(fmtDuration(17 * 60), '17min');
 assert.strictEqual(fmtDuration(3 * 3600 + 5 * 60), '3h05');
