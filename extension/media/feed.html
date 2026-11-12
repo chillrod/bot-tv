@@ -69,6 +69,56 @@
   .hits { margin-top: 4px; max-height: 14em; overflow: auto; }
   .hits a { display: block; font-family: var(--vscode-editor-font-family); font-size: .9em; }
   #empty { padding: 12px 10px; opacity: .65; }
+  #state.fail { color: var(--vscode-errorForeground); }
+  .item.fail { border-left: 3px solid var(--vscode-errorForeground); }
+  .tab .n { margin-left: 5px; font-size: .9em; opacity: .6; }
+  details.body summary { cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--vscode-editor-font-family); font-size: .9em; }
+  details.body summary::-webkit-details-marker { display: none; }
+  details.body .more { margin-left: 6px; opacity: .7; }
+
+  /* ---- rodapé fixo: nível, XP e o jogo (secundário, dá para esconder) ---- */
+  #arcade { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; background: var(--vscode-sideBar-background); border-top: 1px solid var(--vscode-panel-border); }
+  #arcade #level { gap: 6px; padding: 7px 10px 6px; font-size: .78em; }
+  #arcade #lv { gap: 3px; padding: 0; border: 0; }
+  #pct { opacity: .7; font-variant-numeric: tabular-nums; }
+  #strip { position: relative; line-height: 0; }
+  #game { width: 100%; aspect-ratio: 240 / 40; image-rendering: pixelated; display: block; }
+  #gtoast { position: absolute; right: 6px; top: 4px; max-width: 80%; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75em; line-height: 1.5; color: #f0d040; background: rgba(0, 0, 0, .8); pointer-events: none; }
+  #gtoast[hidden] { display: none; }
+  #abar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 10px 7px; font-size: .82em; font-variant-numeric: tabular-nums; }
+  #abar b { font-weight: 600; }
+  #gFoe { flex: 1 1 8em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+  .lnk { padding: 1px 4px; border: 0; background: transparent; color: var(--vscode-textLink-foreground); font-size: inherit; }
+  #drawer { display: grid; gap: 10px; max-height: 40vh; overflow: auto; padding: 10px 10px 12px; border-top: 1px dashed var(--vscode-panel-border); }
+  #drawer[hidden] { display: none; }
+  #drawer h4 { margin: 0; font-size: .75em; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+  #shop { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .up { display: grid; gap: 2px; padding: 7px 8px; text-align: left; font-size: .8em; }
+  .up:disabled { opacity: .45; cursor: not-allowed; }
+  .up .n { display: flex; justify-content: space-between; gap: 6px; font-weight: 600; }
+  .up .lvl, .up .d { font-weight: 400; opacity: .7; }
+  #relics { display: flex; flex-wrap: wrap; gap: 4px; font-size: .8em; }
+  #relics span { padding: 0 5px; border: 1px solid var(--vscode-panel-border); border-radius: 3px; }
+  #relics em { opacity: .6; }
+  #arcade.off #strip, #arcade.off #drawer, #arcade.off .g { display: none; }
+
+  /* ---- canal de previsão: a TV muda de canal quando o Claude fica parado (só com botTv.weatherCity) ---- */
+  #ws { position: fixed; left: 0; right: 0; z-index: 1; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; cursor: pointer; color: #fff; font-family: var(--vscode-editor-font-family), monospace; background: linear-gradient(180deg, #0a1050, #1c2a8c 55%, #3a2a8c); }
+  #ws[hidden] { display: none; }
+  .ws-top { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: .85em; font-weight: 700; letter-spacing: .08em; text-shadow: 1px 1px 0 #000; background: linear-gradient(90deg, #e8862a, #c05a18); }
+  .ws-body { display: grid; align-content: start; gap: 12px; padding: 12px 10px; }
+  .ws-now { display: flex; align-items: center; gap: 12px; }
+  #wsTemp { font-size: 2.4em; font-weight: 700; line-height: 1; color: #f0d040; text-shadow: 2px 2px 0 #000; }
+  #wsCond { font-weight: 700; letter-spacing: .06em; text-shadow: 1px 1px 0 #000; }
+  #wsCond small { display: block; font-weight: 400; letter-spacing: 0; color: #b8c4ff; }
+  #wsDays { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; }
+  #wsDays div { min-width: 0; padding: 4px 2px; border: 1px solid #4a5ad0; background: rgba(10, 16, 80, .65); }
+  #wsDays b { display: block; font-size: .75em; color: #f0d040; }
+  #wsDays i { display: block; font-size: 1.3em; font-style: normal; }
+  .ws-crawl { overflow: hidden; padding: 4px 0; white-space: nowrap; font-size: .85em; border-top: 2px solid #e8862a; background: rgba(0, 0, 0, .6); }
+  #wsCrawl { display: inline-block; padding-left: 100%; animation: crawl 28s linear infinite; }
+  @keyframes crawl { to { transform: translateX(-100%); } }
+  @media (prefers-reduced-motion: reduce) { #wsCrawl { padding-left: 10px; animation: none; } }
 
   /* ---- skin "vaporwave": preto fundo, neon com brilho, ainda com cara de IDE ---- */
   .vw {
@@ -126,6 +176,41 @@
   .vw .bash .k, .vw .wait .k { color: var(--peach); }
   .vw .output .k, .vw .tool .k, .vw .thinking .k { color: var(--dim); text-shadow: none; }
   .vw .fail .k, .vw .fail .title { color: var(--red); }
+  /* respiro como no artifact: rótulo, título e detalhe cada um na sua linha */
+  .vw { line-height: 1.5; }
+  .vw .row { padding: 12px 10px 10px; }
+  .vw header::after { content: ''; position: absolute; inset: auto 0 0 0; height: 1px; background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan)); box-shadow: 0 0 8px var(--pink), 0 0 16px rgba(79, 240, 255, .5); }
+  .vw #tabs { padding: 6px 6px 0; border-bottom: 1px solid var(--line); }
+  .vw .tab { padding: 4px 9px 7px; }
+  .vw .item { padding: 9px 10px; }
+  .vw .k { display: block; min-width: 0; margin: 0 0 2px; font-weight: 700; letter-spacing: .06em; }
+  .vw .sub { margin-top: 1px; font-size: .85em; }
+  .vw .body { margin-top: 6px; }
+  .vw #arcade #lv { background: none; box-shadow: none; }
+  .vw #pct { color: var(--dim); opacity: 1; }
+  .vw .up { border-radius: 4px; }
+  .vw #state.edit, .vw #state.prompt { color: var(--pink); }
+  .vw #state.search, .vw #state.hits, .vw #state.stop { color: var(--mint); }
+  .vw #state.bash, .vw #state.wait { color: var(--peach); }
+  .vw #state.text, .vw #state.plan { color: var(--violet); }
+  .vw #state.fail { color: var(--red); }
+  .vw .item.fail { border-left-color: var(--red); background: rgba(255, 92, 122, .05); }
+  .vw details.body summary { color: #d9d2ff; font-family: var(--mono); }
+  .vw details.body .more { color: var(--cyan); opacity: 1; }
+  .vw .tab .n { color: var(--dim); text-shadow: none; opacity: 1; }
+  .vw #arcade { background: var(--bg); border-top-color: var(--line); }
+  .vw #abar { color: var(--dim); }
+  .vw #abar b { color: #f0d040; }
+  .vw #gFoe { color: var(--fg); }
+  .vw .lnk, .vw .lnk:hover { border: 0; color: var(--cyan); background: transparent; box-shadow: none; }
+  .vw .lnk:hover { text-shadow: var(--glow); }
+  .vw #drawer { border-top-color: var(--line); }
+  .vw #drawer h4 { color: var(--violet); opacity: 1; }
+  .vw .up { color: var(--fg); background: var(--panel); border-color: var(--line); }
+  .vw .up:hover:not(:disabled) { border-color: #f0d040; box-shadow: none; background: var(--panel); }
+  .vw .up .n > span:first-child { color: var(--cyan); }
+  .vw .up .c { color: #f0d040; }
+  .vw #relics span { color: var(--peach); border-color: var(--line); }
   .vw .item.fresh { animation: tune-in .5s ease-out; }
   @keyframes tune-in { from { opacity: 0; transform: translateY(4px); background: rgba(79, 240, 255, .08); } }
   @media (prefers-reduced-motion: reduce) { .vw .item.fresh { animation: none; } }
@@ -141,17 +226,36 @@
       <text id="face" x="64" y="79" text-anchor="middle">T_T</text>
     </svg>
     <span id="state"></span>
-    <span id="lv"><b>LV</b><span id="lvn">1</span></span>
     <button id="pause"></button>
   </div>
   <div id="upd-row"><button id="upd" hidden></button></div>
   <nav id="tabs" hidden></nav>
   <div id="toast" role="status" hidden></div>
-  <div class="line" id="level"><div id="xp"><i></i></div></div>
 </header>
 <div id="todos" hidden></div>
 <div id="empty"></div>
 <div id="feed"></div>
+<div id="ws" hidden role="button" tabindex="0">
+  <div class="ws-top"><span id="wsTitle"></span><span id="wsClock"></span></div>
+  <div class="ws-body">
+    <div class="ws-now"><div id="wsTemp"></div><div id="wsCond"><span></span><small></small></div></div>
+    <div id="wsDays"></div>
+  </div>
+  <div class="ws-crawl"><span id="wsCrawl"></span></div>
+</div>
+<footer id="arcade">
+  <div class="line" id="level"><span id="lv"><b>LV</b><span id="lvn">1</span></span><div id="xp"><i></i></div><span id="pct"></span></div>
+  <div id="strip"><canvas id="game" width="240" height="40" aria-hidden="true"></canvas><div id="gtoast" role="status" hidden></div></div>
+  <div id="abar">
+    <span class="g">☠ <b id="gSouls">0</b></span>
+    <span class="g"><span id="gFloorL"></span> <b id="gFloor">1</b> <span id="gRoom"></span></span>
+    <span class="g" id="gFoe"></span>
+    <button class="lnk g" id="shopBtn" aria-expanded="false"></button>
+    <button class="lnk" id="hideBtn"></button>
+  </div>
+  <div id="drawer" hidden><h4 id="shopH"></h4><div id="shop"></div><h4 id="relH"></h4><div id="relics"></div></div>
+</footer>
+<script nonce="%NONCE%" src="%GAME%"></script>
 <script nonce="%NONCE%">
   const vscode = acquireVsCodeApi();
   const MAX = 400; // mesmo limite do feed na extensão
@@ -182,9 +286,16 @@
     const title = el(it.file ? 'a' : 'span', 'title', it.title || '');
     if (it.file) title.onclick = () => open(it.file, it.line || 1);
     head.append(title);
-    if (it.sub) head.append(el('span', 'sub', ' · ' + it.sub));
     d.append(head);
-    if (it.body) d.append(el(it.code ? 'pre' : 'div', 'body', it.body));
+    if (it.sub) d.append(el('div', 'sub', it.sub));
+    const lines = it.body && it.kind === 'bash' ? it.body.split('\n') : [];
+    if (lines.length > 3) { // comando longo (heredoc): mostra a primeira linha, o resto abre no clique
+      const det = el('details', 'body');
+      const sum = el('summary', '', lines[0]);
+      sum.append(el('span', 'more', `+${lines.length - 1} ${UI.lines}`));
+      det.append(sum, el('pre', 'body', it.body));
+      d.append(det);
+    } else if (it.body) d.append(el(it.code ? 'pre' : 'div', 'body', it.body));
     if (it.hits && it.hits.length) {
       const h = el('div', 'hits');
       for (const x of it.hits) {
@@ -208,10 +319,14 @@
     if (fresh) d.classList.add('fresh');
     feedEl.append(d);
     while (feedEl.children.length > MAX) feedEl.firstChild.remove();
-    if (d.hidden) {
-      if (fresh && !unread.has(it.project)) { unread.add(it.project); renderTabs(); }
-      return;
+    if (fresh) { // passo ao vivo (não o replay do init): empurra o jogo e tira a TV do canal de previsão
+      game.event(it.kind);
+      lastFresh = Date.now(); wsDismissed = false; showWs(false);
+      if (d.hidden) unread.add(it.project);
+      renderTabs(); // contagem das abas
     }
+    if (d.hidden) return;
+    $('state').className = it.kind;
     if (stick) scrollTo(0, document.body.scrollHeight);
     if (!celebrating) $('face').textContent = FACE[it.kind] || 'o_o';
   }
@@ -223,8 +338,11 @@
     nav.hidden = projects.length === 0;
     document.body.classList.toggle('multi', projects.length > 1);
     document.body.classList.toggle('flow', following === 'flow');
+    const count = { flow: feedEl.children.length };
+    for (const d of feedEl.children) count[d.dataset.project] = (count[d.dataset.project] || 0) + 1;
     for (const p of [{ key: 'flow', name: UI.flow, tip: UI.flowTip }, ...projects]) {
       const b = el('button', 'tab' + (following === p.key ? ' on' : ''), p.name);
+      b.append(el('span', 'n', String(count[p.key] || 0)));
       b.title = p.tip || p.key;
       if (p.key !== 'flow' && unread.has(p.key)) b.append(el('span', 'dot'));
       b.onclick = () => vscode.postMessage({ type: 'follow', project: p.key });
@@ -244,7 +362,9 @@
   let celebrating = false;
   let lastXp = { level: 0, progress: -1 };
   function setXp(x) {
+    game.level(x.level);
     $('lvn').textContent = x.level;
+    $('pct').textContent = `${Math.floor(x.progress * 100)}%`;
     $('level').title = x.tip;
     $('lv').title = x.tip;
     $('xp').firstElementChild.style.width = `${Math.round(x.progress * 1000) / 10}%`;
@@ -283,8 +403,70 @@
     $('empty').textContent = ui.empty;
     setPaused(isPaused);
     renderTabs();
+    game.lang(ui.lang);
+    if (!$('ws').hidden) renderWs();
   }
   const setSkin = (s) => document.body.classList.toggle('vw', s !== 'vscode');
+
+  // ---------- rodapé e canal de previsão: o feed rola entre o cabeçalho e o rodapé fixo ----------
+  function layout() {
+    const h = document.querySelector('header').offsetHeight, f = $('arcade').offsetHeight;
+    document.body.style.paddingBottom = `${f}px`;
+    $('ws').style.top = `${h}px`;
+    $('ws').style.bottom = `${f}px`;
+  }
+  new ResizeObserver(layout).observe(document.querySelector('header'));
+  new ResizeObserver(layout).observe($('arcade'));
+  window.tv = {
+    resize: layout,
+    celebrate() { // chefe derrotado no jogo: a TV comemora como no level up, sem o aviso
+      if (celebrating) return;
+      celebrating = true;
+      $('face').textContent = '★_★';
+      document.body.classList.add('levelup');
+      setTimeout(() => { celebrating = false; document.body.classList.remove('levelup'); }, 1400);
+    },
+  };
+
+  const IDLE_MS = 120_000; // Claude parado esse tempo: a TV muda para a previsão
+  const WS_ICON = { clear: '☀', rain: '☂', snow: '❄', night: '☾', storm: '⚡' };
+  let wsData = null, lastFresh = Date.now(), wsDismissed = false;
+  const locale = () => (UI.lang === 'pt' ? 'pt-BR' : 'en-US');
+  function setWeather(w) {
+    wsData = w && w.now ? w : null;
+    game.weather(wsData && wsData.now.kind);
+    if (!wsData) showWs(false); else if (!$('ws').hidden) renderWs();
+  }
+  function renderWs() {
+    const w = wsData, k = UI.ws;
+    if (!w || !k) return;
+    $('wsTitle').textContent = k.title;
+    $('wsClock').textContent = new Date().toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+    $('wsTemp').textContent = `${w.now.temp}°`;
+    $('wsCond').firstElementChild.textContent = k.kinds[w.now.kind];
+    $('wsCond').lastElementChild.textContent = w.city;
+    const days = $('wsDays');
+    days.textContent = '';
+    for (const d of w.days) {
+      const c = el('div');
+      c.append(el('b', '', new Date(`${d.d}T12:00`).toLocaleDateString(locale(), { weekday: 'short' }).replace('.', '').toUpperCase()), el('i', '', WS_ICON[d.kind] || '·'), el('span', '', `${d.max}°`));
+      days.append(c);
+    }
+    $('wsCrawl').textContent = `${k.now}: ${k.kinds[w.now.kind].toLowerCase()}, ${w.now.temp}° · ${w.city} · ${k.back}`;
+  }
+  function showWs(on) {
+    if ($('ws').hidden === !on) return;
+    $('ws').hidden = !on;
+    if (on) { renderWs(); if (!celebrating) $('face').textContent = '•‿•'; }
+  }
+  const dismissWs = () => { wsDismissed = true; showWs(false); };
+  $('ws').addEventListener('click', dismissWs);
+  $('ws').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') dismissWs(); });
+  setInterval(() => {
+    if (wsData && !wsDismissed && !isPaused && $('ws').hidden && Date.now() - lastFresh > IDLE_MS) showWs(true);
+    else if (!$('ws').hidden) $('wsClock').textContent = new Date().toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+  }, 5000);
+  game.onSave = (save) => vscode.postMessage({ type: 'game', save });
 
   addEventListener('message', ({ data: m }) => {
     if (m.type === 'ui') setUi(m.ui);
@@ -293,7 +475,13 @@
     if (m.type === 'update') setUpdate(m.update);
     if (m.type === 'xp') setXp(m.xp);
     if (m.type === 'levelup') levelUp(m.level);
-    if (m.type === 'init') { following = m.following; projects = m.projects; setXp(m.xp); setUpdate(m.update); setSkin(m.skin); setUi(m.ui); renderTabs(); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
+    if (m.type === 'init') {
+      game.start(m.game, m.ui.lang);
+      following = m.following; projects = m.projects; setXp(m.xp); setUpdate(m.update); setSkin(m.skin); setUi(m.ui);
+      feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); renderTabs();
+      showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; setWeather(m.weather); layout();
+    }
+    if (m.type === 'weather') setWeather(m.weather);
     if (m.type === 'add') add(m.item, true);
     if (m.type === 'todos') showTodos(m.todos);
     if (m.type === 'state') $('state').textContent = m.state;

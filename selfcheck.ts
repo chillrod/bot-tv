@@ -63,6 +63,17 @@ assert.strictEqual(fmtDuration(17 * 60), '17min');
 assert.strictEqual(fmtDuration(3 * 3600 + 5 * 60), '3h05');
 // i18n key parity is enforced by the compiler (pt is typed as the en shape).
 
+// ---- weather: WMO codes from Open-Meteo map to the game's five skies ----
+const { wxKind } = require('./extension/out/weather.js');
+assert.strictEqual(wxKind(0, 1), 'clear');
+assert.strictEqual(wxKind(0, 0), 'night');
+assert.strictEqual(wxKind(45, 1), 'clear', 'fog counts as clear');
+assert.strictEqual(wxKind(61, 0), 'rain', 'rain wins over night');
+assert.strictEqual(wxKind(81), 'rain');
+assert.strictEqual(wxKind(73), 'snow');
+assert.strictEqual(wxKind(86), 'snow');
+assert.strictEqual(wxKind(95), 'storm');
+
 // ---- versions: plugin hook, plugin.json and extension move together; the panel flags an older extension ----
 const { isNewer } = require('./extension/out/level.js');
 assert.ok(isNewer('0.6.0', '0.5.9') && isNewer('0.10.0', '0.9.0') && isNewer('1.0.0', '0.99.99'));

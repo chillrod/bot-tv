@@ -3,7 +3,7 @@
   "displayName": "bot_tv",
   "description": "Watch Claude Code work: every read, search, command and edit, live in your editor.",
   "publisher": "chillrod",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": {
@@ -84,6 +84,11 @@
           "type": "number",
           "default": 7337,
           "description": "Local port the Claude Code plugin sends events to."
+        },
+        "botTv.weatherCity": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Your city, for local weather (e.g. `São Paulo`). Empty = off. When set, the city name is sent to [Open-Meteo](https://open-meteo.com) every 30 minutes; the game's sky follows the real weather and the TV shows a forecast channel when Claude is idle."
         },
         "botTv.stepMs": {
           "type": "number",
