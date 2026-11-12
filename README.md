@@ -73,7 +73,7 @@ That installs the extension that ships inside the plugin. Reload VS Code and hit
 
 **one tab per project.** Got Claude running in more than one folder? Each gets a tab the moment it starts working. `flow…` follows everything, a project tab follows only that one, and the rest blink a dot when something happens there. The editor only moves for the tab you're on.
 
-**the robot levels up.** MMO-style. Every second the agent spends working (prompt to done) is 1 XP, and levels follow the Tibia curve: lv 2 at 100 XP, lv 10 at 9,300, lv 50 at about 1.8M, each level asking more than the last. No cap. The badge and bar live under the robot and show `xp / xp`; hover for the totals. Sessions left idle don't farm XP. Nice try.
+**the robot levels up.** MMO-style. Every second the agent spends working (prompt to done) is 1 XP, and levels follow the Tibia curve: lv 2 at 100 XP, lv 10 at 9,300, lv 50 at about 1.8M, each level asking more than the last. No cap. The badge and bar live under the robot; hover for the XP numbers. Sessions left idle don't farm XP. Nice try.
 
 **it tells you when it updated.** After the extension updates, a pulsing `★ updated to vX` badge sits in the panel until you click it away.
 

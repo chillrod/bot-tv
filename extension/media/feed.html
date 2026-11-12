@@ -258,7 +258,7 @@
     $('lvn').textContent = x.level;
     $('level').title = x.tip;
     $('xp').firstElementChild.style.width = `${Math.round(x.progress * 1000) / 10}%`;
-    $('pct').textContent = `${x.into} / ${x.span} xp`;
+    $('pct').textContent = `${Math.floor(x.progress * 100)}%`;
     if (x.level === lastXp.level && x.progress > lastXp.progress) { // ganhou XP: reflexo passa na barra
       const b = $('xp');
       b.classList.remove('gain');

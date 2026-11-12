@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { pick, Strings } from './i18n';
-import { levelOf, fmtDuration, fmtXp } from './level';
+import { levelOf, fmtDuration } from './level';
 import { Hit, bashCwd, findHits, grepSoleFile, isFile, readTarget, resolvePath, responseText } from './parse';
 
 // O que o plugin manda: o formato dos hooks do Claude Code, mais os eventos próprios (AssistantText, Stop com reason).
@@ -207,7 +207,7 @@ const projectList = () => [...projects].map(([key, name]) => ({ key, name }));
 function xpInfo() {
   const i = levelOf(xpSeconds);
   return {
-    level: i.level, progress: i.progress, into: fmtXp(i.into), span: fmtXp(i.span),
+    level: i.level, progress: i.progress,
     tip: T().xpTip(i.level, i.xp.toLocaleString('en-US'), xpNextTotal(i), fmtDuration(xpSeconds)),
   };
 }
