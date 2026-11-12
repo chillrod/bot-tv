@@ -15,13 +15,15 @@ const en = {
   paused: 'paused', tooltip: 'bot_tv — click to pause/resume', portBusy: 'port in use',
   xpTip: (l: number, xp: string, next: string, worked: string) => `lv ${l} · ${xp} / ${next} xp · ${worked} of agent work`,
   outdated: (v: string) => `plugin v${v} is newer`, outdatedTip: (v: string) => `The plugin is v${v} but this extension is older. Run /bot-tv:bot-tv-vscode in Claude Code, then reload VS Code.`,
-  updated: (v: string) => `updated to v${v}`, updatedTip: (v: string) => `bot_tv v${v}: MMO-style XP curve (Tibia formula, no level cap). Click to dismiss.`,
+  updated: (v: string) => `updated to v${v}`, updatedTip: (v: string) => `bot_tv v${v}: an idle RPG at the bottom of the panel, local weather (botTv.weatherCity), and the editor only follows Claude while the panel is open. Click to dismiss.`,
   // vai para o webview: só texto, nada de função
   ui: {
+    lang: 'en',
     labels: { prompt: 'you', text: 'ai', thinking: 'thinking', read: 'reading', search: 'searching', hits: 'found', bash: 'command', output: 'output', edit: 'edited', plan: 'plan', agent: 'subagent', web: 'web', wait: 'waiting', fail: 'failed', stop: 'end', tool: 'tool' },
     empty: 'nothing on air yet. run Claude Code with the bot-tv plugin.',
-    pause: 'Pause', resume: 'Resume',
-    flow: 'flow…', flowTip: 'follow every project', levelUp: 'level up!',
+    pause: 'Pause', resume: 'Resume', lines: 'lines',
+    flow: 'all', flowTip: 'follow every project', levelUp: 'level up!',
+    ws: { title: 'LOCAL FORECAST', now: 'Now', back: 'click to go back to the feed', kinds: { clear: 'CLEAR', rain: 'RAIN', snow: 'SNOW', night: 'CLEAR NIGHT', storm: 'STORM' } },
   },
 };
 
@@ -43,12 +45,14 @@ const pt: Strings = {
   paused: 'pausado', tooltip: 'bot_tv — clique para pausar/retomar', portBusy: 'porta ocupada',
   xpTip: (l, xp, next, worked) => `lv ${l} · ${xp} / ${next} xp · ${worked} de IA trabalhando`,
   outdated: (v) => `plugin v${v} é mais novo`, outdatedTip: (v) => `O plugin está na v${v} e esta extensão é mais antiga. Rode /bot-tv:bot-tv-vscode no Claude Code e recarregue o VS Code.`,
-  updated: (v) => `atualizado para v${v}`, updatedTip: (v) => `bot_tv v${v}: XP estilo MMO (fórmula do Tibia, sem limite de nível). Clique para fechar.`,
+  updated: (v) => `atualizado para v${v}`, updatedTip: (v) => `bot_tv v${v}: um RPG idle no rodapé do painel, clima da sua cidade (botTv.weatherCity) e o editor só segue o Claude com o painel aberto. Clique para fechar.`,
   ui: {
+    lang: 'pt',
     labels: { prompt: 'você', text: 'ia', thinking: 'raciocínio', read: 'lendo', search: 'buscando', hits: 'achou', bash: 'comando', output: 'saída', edit: 'editou', plan: 'plano', agent: 'subagente', web: 'web', wait: 'esperando', fail: 'falhou', stop: 'fim', tool: 'ferramenta' },
     empty: 'nada no ar ainda. rode o Claude Code com o plugin bot-tv.',
-    pause: 'Pausar', resume: 'Retomar',
-    flow: 'flow…', flowTip: 'seguir todos os projetos', levelUp: 'subiu de nível!',
+    pause: 'Pausar', resume: 'Retomar', lines: 'linhas',
+    flow: 'todos', flowTip: 'seguir todos os projetos', levelUp: 'subiu de nível!',
+    ws: { title: 'PREVISÃO LOCAL', now: 'Agora', back: 'clique para voltar ao feed', kinds: { clear: 'CÉU LIMPO', rain: 'CHUVA', snow: 'NEVE', night: 'NOITE CLARA', storm: 'TEMPESTADE' } },
   },
 };
 

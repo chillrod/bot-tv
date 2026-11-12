@@ -8,6 +8,7 @@ import * as crypto from 'crypto';
 import { pick, Strings } from './i18n';
 import { levelOf, fmtDuration, isNewer } from './level';
 import { Hit, bashCwd, findHits, grepSoleFile, isFile, readTarget, resolvePath, responseText } from './parse';
+import { Forecast, forecast } from './weather';
 
 // O que o plugin manda: o formato dos hooks do Claude Code, mais os eventos próprios (AssistantText, Stop com reason).
 interface HookEvent {
@@ -59,7 +60,7 @@ const OUTPUT_LINES = 30;  // linhas de saída de comando mostradas no feed
 const before = new Map<string, string>(); // id do tool_use -> conteúdo do arquivo antes da edição
 const queue: Job[] = [];
 const feed: FeedItem[] = [];
-let paused = false, busy = false, state = '', nextId = 1, viewShown = false;
+let paused = false, busy = false, state = '', nextId = 1;
 let todos: Todo[] = [];
 let agent = false; // o passo sendo mostrado veio de um subagente
 let out: vscode.OutputChannel, status: vscode.StatusBarItem, hl: vscode.TextEditorDecorationType, face: vscode.TextEditorDecorationType;
@@ -72,12 +73,18 @@ const projects = new Map<string, string>(); // chave do projeto -> nome da pasta
 let following = 'flow';
 let cur = { project: '', name: '' }; // projeto do passo sendo mostrado
 let followed = true;                  // o passo sendo mostrado é da aba seguida
+// O editor só é guiado com o painel da TV aberto e visível; fechado, os passos só entram no feed.
+const steer = () => followed && !!view?.visible;
 
 // Nível: tempo de IA trabalhando (do prompt ao Stop), somado entre sessões e guardado no VS Code.
 const GAP_CAP_S = 120;     // intervalo máximo contado entre dois eventos de um turno: sessão largada aberta não vira XP
 const XP_SAVE_MS = 30_000; // de quanto em quanto tempo grava o XP enquanto a IA trabalha
 const turns = new Map<string, number>(); // session_id -> hora do último evento com turno aberto
 let xpSeconds = 0, lastSave = 0;
+
+const WEATHER_MS = 30 * 60_000;  // de quanto em quanto tempo pergunta o clima
+const MAX_GAME_SAVE = 100_000;   // o save do jogo vem do webview: acima disso é lixo, não grava
+let weather: Forecast | null = null;
 
 const skin = () => vscode.workspace.getConfiguration('botTv').get<string>('skin');
 
@@ -123,6 +130,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
         post({ type: 'skin', skin: skin() });
       }
       if (e.affectsConfiguration('botTv.language')) { setState(''); post({ type: 'ui', ui: T().ui }); }
+      if (e.affectsConfiguration('botTv.weatherCity')) refreshWeather();
     }),
     vscode.workspace.registerTextDocumentContentProvider('bottv-before', {
       provideTextDocumentContent: (uri) => before.get(uri.query) ?? '',
@@ -138,6 +146,17 @@ export function activate(ctx: vscode.ExtensionContext): void {
   server.listen(port, '127.0.0.1', () => out.appendLine(`ouvindo em 127.0.0.1:${port}`));
   ctx.subscriptions.push({ dispose: () => server.close() });
   setState(state);
+  refreshWeather();
+  const wx = setInterval(refreshWeather, WEATHER_MS);
+  ctx.subscriptions.push({ dispose: () => clearInterval(wx) });
+}
+
+async function refreshWeather(): Promise<void> {
+  const city = (vscode.workspace.getConfiguration('botTv').get<string>('weatherCity') || '').trim();
+  try { weather = city ? await forecast(city) : null; }
+  catch (e) { out.appendLine(`clima: ${(e as Error).message}`); return; } // sem rede: fica o último que chegou
+  if (city && !weather) out.appendLine(`clima: cidade não encontrada: ${city}`);
+  post({ type: 'weather', weather });
 }
 
 export function deactivate(): void { saveXp(); }
@@ -152,9 +171,14 @@ function resolveWebviewView(v: vscode.WebviewView): void {
   v.webview.html = fs.readFileSync(path.join(extUri.fsPath, 'media', 'feed.html'), 'utf8')
     .replace(/%NONCE%/g, nonce)
     .replace(/%CSP%/g, v.webview.cspSource)
-    .replace(/%FONT%/g, v.webview.asWebviewUri(vscode.Uri.joinPath(media, 'fonts', 'roboto-mono-latin-wght-normal.woff2')).toString());
-  v.webview.onDidReceiveMessage((m: { type: string; project?: string; file?: string; line?: number }) => {
-    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui, following, projects: projectList(), xp: xpInfo(), update: updateInfo() });
+    .replace(/%FONT%/g, v.webview.asWebviewUri(vscode.Uri.joinPath(media, 'fonts', 'roboto-mono-latin-wght-normal.woff2')).toString())
+    .replace(/%GAME%/g, v.webview.asWebviewUri(vscode.Uri.joinPath(media, 'game.js')).toString());
+  v.webview.onDidReceiveMessage((m: { type: string; project?: string; file?: string; line?: number; save?: unknown }) => {
+    if (m.type === 'ready') {
+      const game = store?.get('botTv.game') ?? null;
+      post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui, following, projects: projectList(), xp: xpInfo(), update: updateInfo(), game, weather });
+    }
+    if (m.type === 'game' && m.save && typeof m.save === 'object' && JSON.stringify(m.save).length < MAX_GAME_SAVE) store?.update('botTv.game', m.save);
     if (m.type === 'ackUpdate') store?.update('botTv.seenVersion', version);
     if (m.type === 'toggle') toggle();
     if (m.type === 'follow' && m.project) {
@@ -290,7 +314,6 @@ function handle(req: http.IncomingMessage, res: http.ServerResponse): void {
     trackXp(ev); // na chegada, não na fila: o tempo é o da IA, não o do replay
     queue.push({ ev, project: projectOf(ev) });
     reply(200, { ok: true });
-    if (!viewShown && !view) { viewShown = true; vscode.commands.executeCommand('botTv.feed.focus'); }
     drain();
   });
 }
@@ -407,7 +430,7 @@ async function after(ev: HookEvent, t: string, i: Record<string, any>): Promise<
 // ---------- editor ----------
 
 async function reveal(file: string, start?: number, count?: number): Promise<boolean> {
-  if (!followed) return false; // outro projeto: só entra no feed, o editor fica com a aba seguida
+  if (!steer()) return false; // outro projeto: só entra no feed, o editor fica com a aba seguida
   const doc = await vscode.workspace.openTextDocument(file);
   const ed = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
   if (!start && !count) { // arquivo inteiro: só abre no topo, destacar tudo não informa nada
@@ -423,7 +446,7 @@ async function reveal(file: string, start?: number, count?: number): Promise<boo
 }
 
 async function revealHits(hits: Hit[]): Promise<boolean> {
-  if (!followed) return false;
+  if (!steer()) return false;
   const file = hits[0].file;
   const doc = await vscode.workspace.openTextDocument(file);
   const ed = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
@@ -451,7 +474,7 @@ async function diff(ev: HookEvent, file: string): Promise<boolean> {
   const s = T();
   setState(s.edited(rel(file)));
   addFeed({ kind: 'edit', title: rel(file), sub: ev.tool_name === 'Write' ? s.fileWritten : '', file, line: selection ? selection.start.line + 1 : 1 });
-  if (!followed) return false;
+  if (!steer()) return false;
   await vscode.commands.executeCommand('vscode.diff', left, right, s.diffTitle(path.basename(file)), { preview: true, preserveFocus: true, selection });
   return true;
 }

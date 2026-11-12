@@ -68,13 +68,17 @@ That installs the extension that ships inside the plugin (plugin commands carry 
 
 ## what's on
 
-**the editor follows.** Reads open at the exact lines. Searches (`Grep`, `Glob`, and plain `grep` / `rg` / `sed` / `head` / `cat` in Bash, `cd` included) jump to the first hit and light up the rest. Edits open as a before → after diff with the new code selected. A tool that fails shows up as failed, never as a fake diff.
+**the editor follows** (while the TV panel is open). Reads open at the exact lines. Searches (`Grep`, `Glob`, and plain `grep` / `rg` / `sed` / `head` / `cat` in Bash, `cd` included) jump to the first hit and light up the rest. Edits open as a before → after diff with the new code selected. A tool that fails shows up as failed, never as a fake diff. Close the panel and the editor is yours again: steps only land in the feed.
 
 **the feed narrates.** Prompt, agent messages, the plan with the current item, commands and their output, subagents, failures, done. Steps are paced (700 ms by default) so it plays like a replay, not a strobe light.
 
-**one tab per project.** Got Claude running in more than one folder? Each gets a tab the moment it starts working. `flow…` follows everything, a project tab follows only that one, and the rest blink a dot when something happens there. The editor only moves for the tab you're on.
+**one tab per project.** Got Claude running in more than one folder? Each gets a tab the moment it starts working. `all` follows everything, a project tab follows only that one, and the rest blink a dot when something happens there. The editor only moves for the tab you're on.
 
-**the robot levels up.** MMO-style. Every second the agent spends working (prompt to done) is 1 XP, and levels follow the Tibia curve: lv 2 at 100 XP, lv 10 at 9,300, lv 50 at about 1.8M, each level asking more than the last. No cap. The badge and bar live under the robot; hover for the XP numbers. Sessions left idle don't farm XP. Nice try.
+**the robot levels up.** MMO-style. Every second the agent spends working (prompt to done) is 1 XP, and levels follow the Tibia curve: lv 2 at 100 XP, lv 10 at 9,300, lv 50 at about 1.8M, each level asking more than the last. No cap. The badge and a thin bar sit at the bottom of the panel; hover for the XP numbers. Sessions left idle don't farm XP. Nice try.
+
+**the arcade.** A thin strip at the bottom of the panel runs an idle RPG: the robot goes down a castle on its own, floor by floor (ramparts, great hall, library, catacombs, clock tower), five random rooms and a boss each. Monsters and bosses are generated on the spot, shape, colors and name. Claude's work pushes it along: a read is a hit, a search is three, an edit hits x4, a passing command heals, a failing one hurts, the end of a turn opens a chest with a relic. Relics last one run; souls go to the workshop for good. Each robot level is +5% damage. Not your thing? `hide game`.
+
+**the weather.** Set `"botTv.weatherCity": "São Paulo"` (or your city) and the game's sky follows the real weather from [Open-Meteo](https://open-meteo.com), no key needed. When Claude sits idle for two minutes, the TV switches to an 80s-style local forecast channel; any step (or a click) switches it back. Left empty, it's off and the sky changes on its own.
 
 **it tells you when it updated.** After the extension updates, a pulsing `★ updated to vX` badge sits in the panel until you click it away. And since `/plugin` updates the plugin but not the VS Code extension, a `⚠ plugin vX is newer` badge shows when the plugin ran ahead of the extension: run `/bot-tv:bot-tv-vscode` and reload VS Code.
 
@@ -92,7 +96,7 @@ Claude Code ──▶ plugin (hooks/register.ts) ──▶ POST 127.0.0.1:7337 �
 
 The plugin is a Claude Code hooks module. It hears prompts, the agent's text, every tool call (before and after it runs) and the end of each turn, and posts them to localhost. Right before an edit runs, the extension snapshots the file, so the diff you see is the real one.
 
-Nothing leaves your machine. VS Code closed? The plugin shrugs and Claude carries on.
+Nothing leaves your machine, unless you set `botTv.weatherCity`: then the city name goes to Open-Meteo every 30 minutes. VS Code closed? The plugin shrugs and Claude carries on.
 
 ## hack on it
 
@@ -111,7 +115,8 @@ npm run package   # build bot-tv.vsix
 
 - one VS Code window owns the port at a time; a second one says "port in use"
 - tabs are per folder, so two sessions in the same folder share one
-- XP lives in VS Code's storage on your machine. New machine, new robot
+- XP and the game save live in VS Code's storage on your machine. New machine, new robot
+- the game pauses while the panel is out of sight. With VS Code closed the robot keeps exploring: up to 8 h of souls are waiting when it opens again
 - the agent's private reasoning never shows up, only what it writes. Claude Code doesn't hand it over
 - the plugin rides the hooks-module API (Claude Code 2.1.275+), still early access
 - English and Portuguese only. Another language is one block in `extension/src/i18n.ts`
