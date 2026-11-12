@@ -116,7 +116,7 @@ npm run package   # build bot-tv.vsix
 
 ## crew wanted
 
-bot_tv is small and moving fast, and it needs a couple of **fixed collaborators**: people who'll own the PR pipeline (review, CI, releases) and handle publishing (VS Code Marketplace, Open VSX, the plugin marketplace).
+bot_tv is free and open source, made for fun. It's looking for a couple of **fixed collaborators**: people who'd like to own the PR pipeline (review, CI, releases) and handle publishing (VS Code Marketplace, Open VSX, the plugin marketplace).
 
 If that's you, email **[chillrod77@gmail.com](mailto:chillrod77@gmail.com)** with your GitHub handle and the part you'd like to own.
 
