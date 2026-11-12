@@ -25,6 +25,12 @@ Think of it as pair programming where you're the one looking over the shoulder.
 
 If the agent's tool fails, you see that it failed. No fake diffs.
 
+## the look
+
+By default the panel goes full vaporwave: deep black, neon pink and cyan with a little glow, a faded sunset grid at the bottom, and the mascot up top making faces at whatever the agent is doing (`o_o` reading, `O_O` searching, `>_<` editing, `^_^` done, `T_T` when something broke). The lines it reads glow pink in your editor and a tiny TV sits in the gutter where the agent is looking.
+
+Want the whole editor to match? Pick **bot_tv Vaporwave** in *Preferences: Color Theme*. Prefer something calmer? Set `"botTv.skin": "vscode"` and the panel just follows your theme.
+
 ## install
 
 You need two pieces: the Claude Code plugin (sends the events) and the VS Code extension (shows them).

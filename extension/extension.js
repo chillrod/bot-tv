@@ -19,19 +19,46 @@ const queue = [];
 const feed = [];
 let paused = false, busy = false, state = 'aguardando IA', todos = [], nextId = 1, viewShown = false;
 let agent = false; // o passo sendo mostrado veio de um subagente
-let out, status, hl, view, extUri;
+let out, status, hl, face, view, extUri;
+
+const skin = () => vscode.workspace.getConfiguration('botTv').get('skin');
+
+// Destaque das linhas que a IA está lendo/achou. No skin vaporwave: neon rosa com brilho.
+function makeHighlight() {
+  if (skin() === 'vscode') {
+    return vscode.window.createTextEditorDecorationType({ backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'), isWholeLine: true });
+  }
+  return vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: 'rgba(255, 79, 216, 0.10)',
+    borderColor: '#ff4fd8',
+    borderStyle: 'solid',
+    borderWidth: '0 0 0 2px',
+    overviewRulerColor: '#ff4fd8',
+    overviewRulerLane: vscode.OverviewRulerLane.Center,
+    // shortcut: o brilho entra pelo CSS de textDecoration (truque aceito pela API de decorações); se o VS Code passar a filtrar, sobra o fundo e a borda
+    textDecoration: 'none; text-shadow: 0 0 6px rgba(255, 79, 216, 0.85)',
+  });
+}
 
 function activate(ctx) {
   extUri = ctx.extensionUri;
   out = vscode.window.createOutputChannel('bot_tv');
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   status.command = 'botTv.toggle';
-  hl = vscode.window.createTextEditorDecorationType({
-    backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'),
-    isWholeLine: true,
+  hl = makeHighlight();
+  face = vscode.window.createTextEditorDecorationType({
+    gutterIconPath: vscode.Uri.joinPath(extUri, 'media', 'gutter.svg'),
+    gutterIconSize: 'contain',
   });
   ctx.subscriptions.push(
-    out, status, hl,
+    out, status, face, { dispose: () => hl.dispose() },
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (!e.affectsConfiguration('botTv.skin')) return;
+      hl.dispose();
+      hl = makeHighlight();
+      post({ type: 'skin', skin: skin() });
+    }),
     vscode.workspace.registerTextDocumentContentProvider('bottv-before', {
       provideTextDocumentContent: (uri) => before.get(uri.query) ?? '',
     }),
@@ -56,7 +83,7 @@ function resolveWebviewView(v) {
   const nonce = crypto.randomBytes(16).toString('hex');
   v.webview.html = fs.readFileSync(path.join(extUri.fsPath, 'media', 'feed.html'), 'utf8').replace(/%NONCE%/g, nonce);
   v.webview.onDidReceiveMessage((m) => {
-    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state });
+    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin() });
     if (m.type === 'toggle') toggle();
     if (m.type === 'open') reveal(m.file, m.line, 1).catch((e) => out.appendLine(`erro ao abrir: ${e.message}`));
   });
@@ -153,7 +180,12 @@ async function show(ev) {
     case 'AssistantText': addFeed({ kind: 'text', title: 'IA', body: ev.text?.trim() }); return false;
     case 'AssistantThinking': addFeed({ kind: 'thinking', title: 'Raciocínio', body: ev.text?.trim() }); return false;
     case 'Notification': setState('esperando você'); addFeed({ kind: 'wait', title: ev.message || 'Esperando você' }); return false;
-    case 'Stop': setState('terminou'); addFeed({ kind: 'stop', title: 'Terminou' }); return false;
+    case 'Stop': {
+      const cut = ev.reason === 'aborted' || ev.reason === 'error';
+      setState(cut ? 'interrompido' : 'terminou');
+      addFeed({ kind: cut ? 'fail' : 'stop', title: ev.reason === 'aborted' ? 'Interrompido' : ev.reason === 'error' ? 'Parou com erro' : 'Terminou' });
+      return false;
+    }
     case 'SubagentStop': addFeed({ kind: 'stop', title: 'Subagente terminou' }); return false;
     case 'PreToolUse': return pre(ev, ev.tool_name, ev.tool_input || {});
     case 'PostToolUse': return after(ev, ev.tool_name, ev.tool_input || {});
@@ -268,8 +300,10 @@ async function diff(ev, file) {
 }
 
 function flash(ed, ranges, ms = 1500) {
-  ed.setDecorations(hl, ranges);
-  setTimeout(() => ed.setDecorations(hl, []), ms);
+  const d = hl; // se o skin mudar no meio, limpa a decoração que foi posta
+  ed.setDecorations(d, ranges);
+  ed.setDecorations(face, [new vscode.Range(ranges[0].start, ranges[0].start)]); // o mascote marca onde a IA está
+  setTimeout(() => { ed.setDecorations(d, []); ed.setDecorations(face, []); }, ms);
 }
 
 function posAt(text, offset) {

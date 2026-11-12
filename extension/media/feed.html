@@ -4,8 +4,13 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-%NONCE%';">
 <style>
+  /* ---- base: segue o tema do VS Code (skin "vscode") ---- */
   body { margin: 0; padding: 0; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-sideBar-background); }
-  header { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
+  header { position: sticky; top: 0; z-index: 2; display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
+  #mascot { width: 46px; height: 46px; flex: none; }
+  #mascot .case { fill: none; stroke: currentColor; stroke-width: 6; }
+  #mascot .screen { fill: currentColor; opacity: .12; }
+  #mascot text { font: 700 30px var(--vscode-editor-font-family), monospace; fill: currentColor; }
   #state { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   button { font: inherit; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border: 0; padding: 2px 8px; cursor: pointer; }
   button:hover { background: var(--vscode-button-secondaryHoverBackground); }
@@ -22,16 +27,78 @@
   .text .body { line-height: 1.45; }
   .thinking .body { font-style: italic; opacity: .75; }
   .wait .title { color: var(--vscode-editorWarning-foreground); }
+  .fail .title { color: var(--vscode-errorForeground); }
   a { color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: none; }
   a:hover { text-decoration: underline; }
   .hits { margin-top: 4px; max-height: 14em; overflow: auto; }
   .hits a { display: block; font-family: var(--vscode-editor-font-family); font-size: .9em; }
   #empty { padding: 12px 10px; opacity: .65; }
-  .fail .title { color: var(--vscode-errorForeground); }
+
+  /* ---- skin "vaporwave": preto fundo, neon com brilho, ainda com cara de IDE ---- */
+  .vw {
+    --bg: #050507; --panel: #0c0a14; --line: #1d1830; --fg: #ece7ff; --dim: #9389b8;
+    --pink: #ff4fd8; --cyan: #4ff0ff; --mint: #7cf5c8; --violet: #b98cff; --peach: #ffb86b; --red: #ff5c7a;
+    --glow: 0 0 6px currentColor, 0 0 14px color-mix(in srgb, currentColor 45%, transparent);
+    background: var(--bg); color: var(--fg);
+  }
+  .vw::after { /* chão quadriculado do pôr do sol vaporwave, bem apagado, atrás de tudo */
+    content: ''; position: fixed; inset: auto 0 0 0; height: 32vh; z-index: -1; pointer-events: none;
+    background:
+      repeating-linear-gradient(90deg, rgba(255, 79, 216, .10) 0 1px, transparent 1px 28px),
+      repeating-linear-gradient(0deg, rgba(79, 240, 255, .08) 0 1px, transparent 1px 22px);
+    -webkit-mask-image: linear-gradient(transparent, #000); mask-image: linear-gradient(transparent, #000);
+  }
+  .vw header { background: rgba(5, 5, 7, .92); border-bottom: 0; backdrop-filter: blur(6px); }
+  .vw header::after { /* linha do horizonte: rosa -> ciano */
+    content: ''; position: absolute; inset: auto 0 0 0; height: 1px;
+    background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan));
+    box-shadow: 0 0 8px var(--pink), 0 0 16px rgba(79, 240, 255, .5);
+  }
+  .vw #mascot { color: var(--pink); filter: drop-shadow(0 0 5px var(--pink)); }
+  .vw #mascot text { fill: var(--cyan); }
+  .vw #mascot .screen { fill: #000; opacity: 1; }
+  .vw #state { color: var(--cyan); text-shadow: var(--glow); font-family: var(--vscode-editor-font-family), monospace; font-size: .92em; letter-spacing: .02em; }
+  .vw button { color: var(--pink); background: transparent; border: 1px solid color-mix(in srgb, var(--pink) 55%, transparent); border-radius: 4px; }
+  .vw button:hover { background: rgba(255, 79, 216, .12); box-shadow: 0 0 10px rgba(255, 79, 216, .45); }
+  .vw button:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+  .vw #todos { border-bottom: 1px solid var(--line); background: var(--panel); }
+  .vw #todos .in_progress { color: var(--mint); text-shadow: var(--glow); font-weight: 600; }
+  .vw #todos .completed { color: var(--dim); }
+  .vw .item { border-bottom: 1px solid var(--line); }
+  .vw .k { opacity: 1; text-shadow: var(--glow); font-family: var(--vscode-editor-font-family), monospace; font-size: .74em; }
+  .vw .title { color: var(--fg); }
+  .vw :is(.read, .edit, .search, .hits, .bash) .title { font-family: var(--vscode-editor-font-family), monospace; font-size: .92em; }
+  .vw .sub { color: var(--dim); opacity: 1; }
+  .vw pre.body { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color: #d9d2ff; }
+  .vw .prompt { background: linear-gradient(90deg, rgba(255, 79, 216, .10), transparent 70%); }
+  .vw .prompt .body::before { content: '❯ '; color: var(--pink); text-shadow: var(--glow); }
+  .vw .thinking .body { color: var(--dim); }
+  .vw a { color: var(--cyan); }
+  .vw a:hover { text-shadow: var(--glow); text-decoration: none; }
+  .vw .hits a { color: var(--mint); }
+  .vw #empty { color: var(--dim); opacity: 1; }
+  .vw .prompt .k, .vw .edit .k { color: var(--pink); }
+  .vw .text .k, .vw .plan .k { color: var(--violet); }
+  .vw .read .k, .vw .agent .k, .vw .web .k { color: var(--cyan); }
+  .vw .search .k, .vw .hits .k, .vw .stop .k { color: var(--mint); }
+  .vw .bash .k, .vw .wait .k { color: var(--peach); }
+  .vw .output .k, .vw .tool .k, .vw .thinking .k { color: var(--dim); text-shadow: none; }
+  .vw .fail .k, .vw .fail .title { color: var(--red); }
+  .vw .item.fresh { animation: tune-in .5s ease-out; }
+  @keyframes tune-in { from { opacity: 0; transform: translateY(4px); background: rgba(79, 240, 255, .08); } }
+  @media (prefers-reduced-motion: reduce) { .vw .item.fresh { animation: none; } }
 </style>
 </head>
 <body>
-<header><span id="state">aguardando IA</span><button id="pause">Pausar</button></header>
+<header>
+  <svg id="mascot" viewBox="0 0 128 128" aria-hidden="true">
+    <path class="case" d="M50 30 38 10M78 30l12-20"/>
+    <rect class="case" x="10" y="30" width="108" height="80" rx="18"/>
+    <rect class="screen" x="22" y="42" width="84" height="56" rx="10"/>
+    <text id="face" x="64" y="79" text-anchor="middle">T_T</text>
+  </svg>
+  <span id="state">aguardando IA</span><button id="pause">Pausar</button>
+</header>
 <div id="todos" hidden></div>
 <div id="empty">T_T nada no ar ainda. Rode o Claude Code com o plugin bot-tv.</div>
 <div id="feed"></div>
@@ -39,6 +106,8 @@
   const vscode = acquireVsCodeApi();
   const MAX = 400; // mesmo limite do feed na extensão
   const LABEL = { prompt: 'você', text: 'ia', thinking: 'raciocínio', read: 'lendo', search: 'buscando', hits: 'achou', bash: 'comando', output: 'saída', edit: 'editou', plan: 'plano', agent: 'subagente', web: 'web', wait: 'esperando', fail: 'falhou', stop: 'fim', tool: 'ferramenta' };
+  // A cara do mascote acompanha o último passo.
+  const FACE = { prompt: '•_•', text: '•‿•', thinking: '-_-', read: 'o_o', search: 'O_O', hits: '^o^', bash: '>_>', output: 'o_o', edit: '>_<', plan: '•_•', agent: '◉_◉', web: 'O_O', wait: '?_?', fail: 'T_T', stop: '^_^', tool: 'o_o' };
   const $ = (id) => document.getElementById(id);
   const feedEl = $('feed'), todosEl = $('todos');
 
@@ -75,11 +144,14 @@
   // Só rola sozinho se a pessoa já está no fim; se subiu para reler, não puxa de volta.
   let stick = true;
   addEventListener('scroll', () => { stick = innerHeight + scrollY >= document.body.scrollHeight - 40; });
-  function add(it) {
+  function add(it, fresh) {
     $('empty').hidden = true;
-    feedEl.append(render(it));
+    const d = render(it);
+    if (fresh) d.classList.add('fresh');
+    feedEl.append(d);
     while (feedEl.children.length > MAX) feedEl.firstChild.remove();
     if (stick) scrollTo(0, document.body.scrollHeight);
+    $('face').textContent = FACE[it.kind] || 'o_o';
   }
   function showTodos(list) {
     todosEl.textContent = '';
@@ -88,13 +160,15 @@
     for (const t of list || []) todosEl.append(el('div', t.status, `${mark[t.status] || '·'} ${t.content}`));
   }
   const setPaused = (p) => { $('pause').textContent = p ? 'Retomar' : 'Pausar'; };
+  const setSkin = (s) => document.body.classList.toggle('vw', s !== 'vscode');
 
   addEventListener('message', ({ data: m }) => {
-    if (m.type === 'init') { feedEl.textContent = ''; m.feed.forEach(add); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
-    if (m.type === 'add') add(m.item);
+    if (m.type === 'init') { setSkin(m.skin); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
+    if (m.type === 'add') add(m.item, true);
     if (m.type === 'todos') showTodos(m.todos);
     if (m.type === 'state') $('state').textContent = m.state;
     if (m.type === 'paused') setPaused(m.paused);
+    if (m.type === 'skin') setSkin(m.skin);
   });
   $('pause').onclick = () => vscode.postMessage({ type: 'toggle' });
   vscode.postMessage({ type: 'ready' });

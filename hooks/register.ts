@@ -34,7 +34,7 @@ export const register: Register = on => {
     for (const argv of [['code', '--install-extension', vsix, '--force'], ['cmd', '/c', 'code', '--install-extension', vsix, '--force']]) {
       try {
         const r = await $.process.run(argv, { timeoutMs: 120_000 })
-        if (r.exitCode === 0) return { text: 'Extensão bot_tv instalada. Recarregue a janela do VS Code (Developer: Reload Window) e abra o ícone de olho na barra lateral.' }
+        if (r.exitCode === 0) return { text: 'Extensão bot_tv instalada. Recarregue a janela do VS Code (Developer: Reload Window) e clique na TV da barra de atividades, à esquerda.' }
       } catch {
         // `code` não encontrado por esse caminho: tenta o próximo
       }
