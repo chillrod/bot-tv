@@ -50,10 +50,11 @@ Pair programming, except you're the one looking over the shoulder.
 Two pieces: a Claude Code plugin that sends the events, and a VS Code extension that shows them.
 
 ```text
+/plugin marketplace add chillrod/bot-tv
 /plugin install bot-tv --marketplace chillrod/bot-tv
 ```
 
-Say `y` to add the marketplace and pick a scope. Then, still in Claude Code:
+The first line registers this repo as a marketplace, the second installs the plugin from it. Then, still in Claude Code:
 
 ```text
 /bot-tv-vscode
@@ -61,7 +62,7 @@ Say `y` to add the marketplace and pick a scope. Then, still in Claude Code:
 
 That installs the extension that ships inside the plugin. Reload VS Code and hit the little TV in the activity bar.
 
-<sub>From a shell instead: `claude plugin install bot-tv --marketplace chillrod/bot-tv`, then `code --install-extension bot-tv.vsix` from the plugin folder.</sub>
+<sub>From a shell instead: `claude plugin marketplace add chillrod/bot-tv`, then `claude plugin install bot-tv --marketplace chillrod/bot-tv`, then `code --install-extension bot-tv.vsix` from the plugin folder.</sub>
 
 > **best seat in the house:** run Claude Code in a terminal *outside* VS Code. Jumps and diffs grab the editor focus, and you don't want that where you're typing.
 
