@@ -6,11 +6,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { pick, Strings } from './i18n';
-import { levelOf, fmtDuration } from './level';
+import { levelOf, fmtDuration, isNewer } from './level';
 import { Hit, bashCwd, findHits, grepSoleFile, isFile, readTarget, resolvePath, responseText } from './parse';
 
 // O que o plugin manda: o formato dos hooks do Claude Code, mais os eventos próprios (AssistantText, Stop com reason).
 interface HookEvent {
+  plugin_version?: string; // versão do plugin que mandou o evento
   hook_event_name: string;
   tool_name?: string;
   tool_input?: Record<string, any>; // argumentos da ferramenta, formato livre por ferramenta
@@ -63,7 +64,7 @@ let todos: Todo[] = [];
 let agent = false; // o passo sendo mostrado veio de um subagente
 let out: vscode.OutputChannel, status: vscode.StatusBarItem, hl: vscode.TextEditorDecorationType, face: vscode.TextEditorDecorationType;
 let view: vscode.WebviewView | null = null;
-let version = '';
+let version = '', pluginNewer = ''; // pluginNewer: versão do plugin, quando mais nova que esta extensão
 let extUri: vscode.Uri, store: vscode.Memento | undefined, wsState: vscode.Memento;
 
 // Abas: "flow" segue tudo; senão, só o projeto (cwd da sessão) escolhido mexe no editor e na legenda.
@@ -215,9 +216,18 @@ const xpNextTotal = (i: ReturnType<typeof levelOf>) => (i.xp + i.toNext).toLocal
 
 // Aviso de versão nova: aparece no painel até o usuário clicar nele. Quem já tinha XP guardado e nunca viu aviso também vê.
 function updateInfo() {
+  if (pluginNewer) return { kind: 'outdated', text: T().outdated(pluginNewer), tip: T().outdatedTip(pluginNewer) };
   const seen = store?.get<string>('botTv.seenVersion');
   if (!version || seen === version || (seen === undefined && xpSeconds === 0)) return null;
-  return { text: T().updated(version), tip: T().updatedTip(version) };
+  return { kind: 'updated', text: T().updated(version), tip: T().updatedTip(version) };
+}
+
+// O plugin é atualizado pelo /plugin, a extensão não: se o plugin é mais novo, o painel avisa para rodar /bot-tv-vscode.
+function checkPlugin(v?: string): void {
+  if (!v || !version || !isNewer(v, version) || pluginNewer === v) return;
+  pluginNewer = v;
+  out.appendLine(`plugin v${v} é mais novo que a extensão v${version}: rode /bot-tv-vscode`);
+  post({ type: 'update', update: updateInfo() });
 }
 
 function trackXp(ev: HookEvent): void {
@@ -276,6 +286,7 @@ function handle(req: http.IncomingMessage, res: http.ServerResponse): void {
     try { ev = JSON.parse(body); } catch { return reply(400, { error: 'json inválido' }); }
     // A foto do "antes" tem que sair agora: o hook Pre segura o Claude até esta resposta.
     if (ev.hook_event_name === 'PreToolUse' && EDITS.has(ev.tool_name || '')) snapshot(ev);
+    checkPlugin(ev.plugin_version);
     trackXp(ev); // na chegada, não na fila: o tempo é o da IA, não o do replay
     queue.push({ ev, project: projectOf(ev) });
     reply(200, { ok: true });

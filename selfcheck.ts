@@ -63,4 +63,13 @@ assert.strictEqual(fmtDuration(17 * 60), '17min');
 assert.strictEqual(fmtDuration(3 * 3600 + 5 * 60), '3h05');
 // i18n key parity is enforced by the compiler (pt is typed as the en shape).
 
+// ---- versions: plugin hook, plugin.json and extension move together; the panel flags an older extension ----
+const { isNewer } = require('./extension/out/level.js');
+assert.ok(isNewer('0.6.0', '0.5.9') && isNewer('0.10.0', '0.9.0') && isNewer('1.0.0', '0.99.99'));
+assert.ok(!isNewer('0.6.0', '0.6.0') && !isNewer('0.5.0', '0.6.0'));
+const pluginVersion = JSON.parse(fs.readFileSync('.claude-plugin/plugin.json', 'utf8')).version;
+const extVersion = JSON.parse(fs.readFileSync('extension/package.json', 'utf8')).version;
+assert.strictEqual(extVersion, pluginVersion, 'plugin.json and extension/package.json versions match');
+assert.ok(fs.readFileSync('hooks/register.ts', 'utf8').includes(`PLUGIN_VERSION = '${pluginVersion}'`), 'hooks/register.ts PLUGIN_VERSION matches plugin.json');
+
 console.log('selfcheck ok');
