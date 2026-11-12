@@ -14,7 +14,7 @@ const en = {
   failed: (t: string) => `${t} failed`,
   paused: 'paused', tooltip: 'bot_tv — click to pause/resume', portBusy: 'port in use',
   xpTip: (l: number, xp: string, next: string, worked: string) => `lv ${l} · ${xp} / ${next} xp · ${worked} of agent work`,
-  outdated: (v: string) => `plugin v${v} is newer`, outdatedTip: (v: string) => `The plugin is v${v} but this extension is older. Run /bot-tv-vscode in Claude Code, then reload VS Code.`,
+  outdated: (v: string) => `plugin v${v} is newer`, outdatedTip: (v: string) => `The plugin is v${v} but this extension is older. Run /bot-tv:bot-tv-vscode in Claude Code, then reload VS Code.`,
   updated: (v: string) => `updated to v${v}`, updatedTip: (v: string) => `bot_tv v${v}: MMO-style XP curve (Tibia formula, no level cap). Click to dismiss.`,
   // vai para o webview: só texto, nada de função
   ui: {
@@ -42,7 +42,7 @@ const pt: Strings = {
   failed: (t) => `${t} falhou`,
   paused: 'pausado', tooltip: 'bot_tv — clique para pausar/retomar', portBusy: 'porta ocupada',
   xpTip: (l, xp, next, worked) => `lv ${l} · ${xp} / ${next} xp · ${worked} de IA trabalhando`,
-  outdated: (v) => `plugin v${v} é mais novo`, outdatedTip: (v) => `O plugin está na v${v} e esta extensão é mais antiga. Rode /bot-tv-vscode no Claude Code e recarregue o VS Code.`,
+  outdated: (v) => `plugin v${v} é mais novo`, outdatedTip: (v) => `O plugin está na v${v} e esta extensão é mais antiga. Rode /bot-tv:bot-tv-vscode no Claude Code e recarregue o VS Code.`,
   updated: (v) => `atualizado para v${v}`, updatedTip: (v) => `bot_tv v${v}: XP estilo MMO (fórmula do Tibia, sem limite de nível). Clique para fechar.`,
   ui: {
     labels: { prompt: 'você', text: 'ia', thinking: 'raciocínio', read: 'lendo', search: 'buscando', hits: 'achou', bash: 'comando', output: 'saída', edit: 'editou', plan: 'plano', agent: 'subagente', web: 'web', wait: 'esperando', fail: 'falhou', stop: 'fim', tool: 'ferramenta' },

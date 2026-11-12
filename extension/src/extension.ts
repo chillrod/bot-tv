@@ -222,11 +222,11 @@ function updateInfo() {
   return { kind: 'updated', text: T().updated(version), tip: T().updatedTip(version) };
 }
 
-// O plugin é atualizado pelo /plugin, a extensão não: se o plugin é mais novo, o painel avisa para rodar /bot-tv-vscode.
+// O plugin é atualizado pelo /plugin, a extensão não: se o plugin é mais novo, o painel avisa para rodar /bot-tv:bot-tv-vscode.
 function checkPlugin(v?: string): void {
   if (!v || !version || !isNewer(v, version) || pluginNewer === v) return;
   pluginNewer = v;
-  out.appendLine(`plugin v${v} é mais novo que a extensão v${version}: rode /bot-tv-vscode`);
+  out.appendLine(`plugin v${v} é mais novo que a extensão v${version}: rode /bot-tv:bot-tv-vscode`);
   post({ type: 'update', update: updateInfo() });
 }
 
