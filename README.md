@@ -40,7 +40,7 @@ Pair programming, except you're the one looking over the shoulder.
 
 </td>
 <td width="48%" valign="top">
-<img src="assets/panel.png" alt="The bot_tv panel: mascot with level badge and XP bar, project tabs, the agent's plan, and a feed of searches, reads, commands and edits">
+<img src="assets/panel.png" alt="The bot_tv panel: the TV robot and current step, project tabs with step counts, the agent's plan, a feed of searches, reads, commands and edits, and at the bottom the level, a thin XP bar and the arcade strip with the robot in a castle hall">
 </td>
 </tr>
 </table>
