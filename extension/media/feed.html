@@ -54,7 +54,7 @@
   #todos div { padding: 1px 0; }
   #todos .completed { opacity: .55; text-decoration: line-through; }
   #todos .in_progress { font-weight: 600; }
-  .item { padding: 6px 10px; border-bottom: 1px solid var(--vscode-panel-border); }
+  .item { padding: 6px 10px; border-bottom: 1px solid var(--vscode-panel-border); overflow-wrap: anywhere; } /* caminho longo sem espaço quebra a linha em vez de alargar o painel */
   .k { display: inline-block; min-width: 5.5em; margin-right: 4px; font-size: .78em; text-transform: uppercase; letter-spacing: .04em; opacity: .6; }
   .sub { opacity: .65; }
   .body { margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
