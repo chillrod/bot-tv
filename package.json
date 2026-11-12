@@ -1,0 +1,9 @@
+{
+  "name": "bot-tv",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node selfcheck.js && claude plugin test .",
+    "package": "cd extension && npx --yes @vscode/vsce@3.6.0 package --allow-missing-repository -o ../bot-tv.vsix"
+  }
+}

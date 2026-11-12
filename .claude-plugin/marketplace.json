@@ -1,0 +1,6 @@
+{
+  "name": "bot-tv",
+  "owner": { "name": "chillrod" },
+  "metadata": { "description": "bot_tv: watch Claude Code work, live in VS Code." },
+  "plugins": [{ "name": "bot-tv", "source": "./", "description": "Watch Claude Code work: every read, search, command and edit, live in VS Code." }]
+}

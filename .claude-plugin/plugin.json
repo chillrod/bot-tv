@@ -1,0 +1,7 @@
+{
+  "name": "bot-tv",
+  "version": "0.1.0",
+  "description": "Watch Claude Code work: every read, search, command and edit, live in VS Code.",
+  "author": { "name": "chillrod" },
+  "license": "MIT"
+}

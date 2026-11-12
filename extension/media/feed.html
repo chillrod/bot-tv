@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-%NONCE%';">
+<style>
+  body { margin: 0; padding: 0; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-sideBar-background); }
+  header { position: sticky; top: 0; z-index: 1; display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
+  #state { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button { font: inherit; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border: 0; padding: 2px 8px; cursor: pointer; }
+  button:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  #todos { padding: 6px 10px; border-bottom: 1px solid var(--vscode-panel-border); }
+  #todos div { padding: 1px 0; }
+  #todos .completed { opacity: .55; text-decoration: line-through; }
+  #todos .in_progress { font-weight: 600; }
+  .item { padding: 6px 10px; border-bottom: 1px solid var(--vscode-panel-border); }
+  .k { display: inline-block; min-width: 5.5em; margin-right: 4px; font-size: .78em; text-transform: uppercase; letter-spacing: .04em; opacity: .6; }
+  .sub { opacity: .65; }
+  .body { margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+  pre.body { max-height: 14em; overflow: auto; font-family: var(--vscode-editor-font-family); font-size: .9em; }
+  .prompt { background: var(--vscode-editor-inactiveSelectionBackground); }
+  .text .body { line-height: 1.45; }
+  .thinking .body { font-style: italic; opacity: .75; }
+  .wait .title { color: var(--vscode-editorWarning-foreground); }
+  a { color: var(--vscode-textLink-foreground); cursor: pointer; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .hits { margin-top: 4px; max-height: 14em; overflow: auto; }
+  .hits a { display: block; font-family: var(--vscode-editor-font-family); font-size: .9em; }
+  #empty { padding: 12px 10px; opacity: .65; }
+  .fail .title { color: var(--vscode-errorForeground); }
+</style>
+</head>
+<body>
+<header><span id="state">aguardando IA</span><button id="pause">Pausar</button></header>
+<div id="todos" hidden></div>
+<div id="empty">T_T nada no ar ainda. Rode o Claude Code com o plugin bot-tv.</div>
+<div id="feed"></div>
+<script nonce="%NONCE%">
+  const vscode = acquireVsCodeApi();
+  const MAX = 400; // mesmo limite do feed na extensão
+  const LABEL = { prompt: 'você', text: 'ia', thinking: 'raciocínio', read: 'lendo', search: 'buscando', hits: 'achou', bash: 'comando', output: 'saída', edit: 'editou', plan: 'plano', agent: 'subagente', web: 'web', wait: 'esperando', fail: 'falhou', stop: 'fim', tool: 'ferramenta' };
+  const $ = (id) => document.getElementById(id);
+  const feedEl = $('feed'), todosEl = $('todos');
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  const open = (file, line) => vscode.postMessage({ type: 'open', file, line });
+
+  function render(it) {
+    const d = el('div', 'item ' + it.kind);
+    const head = el('div');
+    head.append(el('span', 'k', (it.agent ? 'sub · ' : '') + (LABEL[it.kind] || it.kind)));
+    const title = el(it.file ? 'a' : 'span', 'title', it.title || '');
+    if (it.file) title.onclick = () => open(it.file, it.line || 1);
+    head.append(title);
+    if (it.sub) head.append(el('span', 'sub', ' · ' + it.sub));
+    d.append(head);
+    if (it.body) d.append(el(it.code ? 'pre' : 'div', 'body', it.body));
+    if (it.hits && it.hits.length) {
+      const h = el('div', 'hits');
+      for (const x of it.hits) {
+        const a = el('a', '', `${x.rel}:${x.line}`);
+        a.onclick = () => open(x.file, x.line);
+        h.append(a);
+      }
+      d.append(h);
+    }
+    return d;
+  }
+
+  // Só rola sozinho se a pessoa já está no fim; se subiu para reler, não puxa de volta.
+  let stick = true;
+  addEventListener('scroll', () => { stick = innerHeight + scrollY >= document.body.scrollHeight - 40; });
+  function add(it) {
+    $('empty').hidden = true;
+    feedEl.append(render(it));
+    while (feedEl.children.length > MAX) feedEl.firstChild.remove();
+    if (stick) scrollTo(0, document.body.scrollHeight);
+  }
+  function showTodos(list) {
+    todosEl.textContent = '';
+    todosEl.hidden = !list || !list.length;
+    const mark = { completed: '✓', in_progress: '▸', pending: '·' };
+    for (const t of list || []) todosEl.append(el('div', t.status, `${mark[t.status] || '·'} ${t.content}`));
+  }
+  const setPaused = (p) => { $('pause').textContent = p ? 'Retomar' : 'Pausar'; };
+
+  addEventListener('message', ({ data: m }) => {
+    if (m.type === 'init') { feedEl.textContent = ''; m.feed.forEach(add); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
+    if (m.type === 'add') add(m.item);
+    if (m.type === 'todos') showTodos(m.todos);
+    if (m.type === 'state') $('state').textContent = m.state;
+    if (m.type === 'paused') setPaused(m.paused);
+  });
+  $('pause').onclick = () => vscode.postMessage({ type: 'toggle' });
+  vscode.postMessage({ type: 'ready' });
+</script>
+</body>
+</html>
