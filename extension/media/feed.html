@@ -8,19 +8,14 @@
 
   /* ---- base: segue o tema do VS Code (skin "vscode") ---- */
   body { margin: 0; padding: 0; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-sideBar-background); }
-  #stage { position: sticky; top: 0; z-index: 2; display: grid; justify-items: center; gap: 4px; padding: 14px 10px 10px; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
-  #botwrap { position: relative; width: 84px; height: 84px; }
-  #bot { width: 84px; height: 84px; overflow: visible; color: var(--vscode-foreground); }
-  #bot .case { fill: none; stroke: currentColor; stroke-width: 6; stroke-linecap: round; }
-  #bot .screen { fill: currentColor; opacity: .12; }
-  #bot .bulb { fill: currentColor; }
-  #bot text { font: 700 30px 'Roboto Mono', var(--vscode-editor-font-family), monospace; fill: currentColor; }
-  #bot .tear { fill: #6cb6ff; opacity: 0; }
-  #bubble { position: absolute; top: -2px; right: -30px; display: none; gap: 3px; padding: 5px 7px; border-radius: 10px; border: 1px solid currentColor; color: var(--vscode-descriptionForeground); }
-  #bubble i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
-  #state { max-width: 100%; min-height: 1.3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9em; opacity: .75; }
-  #pause { position: absolute; top: 8px; right: 8px; font: inherit; font-size: .85em; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border: 0; padding: 2px 7px; cursor: pointer; }
-  #pause:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  header { position: sticky; top: 0; z-index: 2; display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
+  #mascot { width: 46px; height: 46px; flex: none; }
+  #mascot .case { fill: none; stroke: currentColor; stroke-width: 6; }
+  #mascot .screen { fill: currentColor; opacity: .12; }
+  #mascot text { font: 700 30px var(--vscode-editor-font-family), monospace; fill: currentColor; }
+  #state { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button { font: inherit; color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border: 0; padding: 2px 8px; cursor: pointer; }
+  button:hover { background: var(--vscode-button-secondaryHoverBackground); }
   #todos { padding: 6px 10px; border-bottom: 1px solid var(--vscode-panel-border); }
   #todos div { padding: 1px 0; }
   #todos .completed { opacity: .55; text-decoration: line-through; }
@@ -39,103 +34,67 @@
   a:hover { text-decoration: underline; }
   .hits { margin-top: 4px; max-height: 14em; overflow: auto; }
   .hits a { display: block; font-family: var(--vscode-editor-font-family); font-size: .9em; }
-  #empty { padding: 12px 10px; opacity: .65; text-align: center; }
+  #empty { padding: 12px 10px; opacity: .65; }
 
-  /* ---- o robô: um estado por vez no #stage (idle, thinking, working, done, fail) ---- */
-  #bot { animation: bob 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
-  .thinking #bot { animation: ponder 2.4s ease-in-out infinite; }
-  .thinking #bubble { display: flex; }
-  .thinking #bubble i { animation: dot 1.2s ease-in-out infinite; }
-  .thinking #bubble i:nth-child(2) { animation-delay: .15s; }
-  .thinking #bubble i:nth-child(3) { animation-delay: .3s; }
-  .thinking .b1 { animation: bulb 1.2s ease-in-out infinite; }
-  .thinking .b2 { animation: bulb 1.2s ease-in-out .6s infinite; }
-  .working #bot { animation: bob .7s ease-in-out infinite; }
-  .working .bulb { animation: bulb .5s ease-in-out infinite; }
-  .working .screen { animation: flicker .9s steps(2) infinite; }
-  .idle #state { visibility: hidden; } /* parado, o robô fala por si: sem legenda */
-  .done #bot { animation: hop .55s ease-out 2; }
-  .fail #bot { animation: none; }
-  .fail .tear { animation: tear 1.6s ease-in infinite; }
-  @keyframes bob { 50% { transform: translateY(-3px); } }
-  @keyframes ponder { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg) translateY(-2px); } }
-  @keyframes hop { 40% { transform: translateY(-9px); } 70% { transform: translateY(1px); } }
-  @keyframes bulb { 50% { opacity: .25; } }
-  @keyframes dot { 50% { transform: translateY(-3px); opacity: .4; } }
-  @keyframes flicker { 50% { opacity: .82; } }
-  @keyframes tear { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(18px); } }
-  @media (prefers-reduced-motion: reduce) { #bot, #bot *, #bubble i, .item.fresh { animation: none !important; } }
-
-  /* ---- skin "vaporwave": preto fundo, roxo com brilho, Roboto Mono, ainda com cara de IDE ---- */
+  /* ---- skin "vaporwave": preto fundo, neon com brilho, ainda com cara de IDE ---- */
   .vw {
-    --bg: #050507; --panel: #0d0b16; --line: #1e1a33; --fg: #ece7ff; --dim: #948ab8;
-    --violet: #b18cff; --purple: #8b5cf6; --lav: #d4c4ff; --orchid: #e07bff;
-    --cyan: #5ee7ff; --mint: #7cf5c8; --peach: #ffb86b; --red: #ff6b88;
-    --glow: 0 0 6px currentColor, 0 0 14px color-mix(in srgb, currentColor 40%, transparent);
-    background: var(--bg); color: var(--fg);
-    font-family: 'Roboto Mono', var(--vscode-editor-font-family), monospace; font-size: calc(var(--vscode-font-size) * .95);
+    --bg: #050507; --panel: #0c0a14; --line: #1d1830; --fg: #ece7ff; --dim: #9389b8;
+    --pink: #ff4fd8; --cyan: #4ff0ff; --mint: #7cf5c8; --violet: #b98cff; --peach: #ffb86b; --red: #ff5c7a;
+    --glow: 0 0 6px currentColor, 0 0 14px color-mix(in srgb, currentColor 45%, transparent);
+    --mono: 'Roboto Mono', var(--vscode-editor-font-family), monospace;
+    background: var(--bg); color: var(--fg); font-family: var(--mono); font-size: calc(var(--vscode-font-size) * .95);
   }
-  .vw pre.body, .vw .hits a, .vw #bot text { font-family: 'Roboto Mono', var(--vscode-editor-font-family), monospace; }
-  .vw #stage { background: rgba(5, 5, 7, .94); border-bottom: 0; backdrop-filter: blur(6px); }
-  .vw #stage::after { /* linha do horizonte roxa */
+  .vw pre.body, .vw .hits a, .vw #mascot text { font-family: var(--mono); }
+  .vw header { background: rgba(5, 5, 7, .92); border-bottom: 0; backdrop-filter: blur(6px); }
+  .vw header::after { /* linha do horizonte: rosa -> ciano */
     content: ''; position: absolute; inset: auto 0 0 0; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--purple), var(--violet), var(--purple), transparent);
-    box-shadow: 0 0 10px var(--purple);
+    background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan));
+    box-shadow: 0 0 8px var(--pink), 0 0 16px rgba(79, 240, 255, .5);
   }
-  .vw #bot { color: var(--violet); filter: drop-shadow(0 0 6px rgba(139, 92, 246, .8)); }
-  .vw #bot .screen { fill: #000; opacity: 1; }
-  .vw #bot text { fill: var(--lav); }
-  .vw #bot .bulb { fill: var(--cyan); }
-  .vw #bot .tear { fill: var(--cyan); }
-  .vw #bubble { color: var(--violet); background: var(--panel); box-shadow: 0 0 8px rgba(139, 92, 246, .5); }
-  .vw .working #bot { filter: drop-shadow(0 0 9px rgba(177, 140, 255, .95)); }
-  .vw .fail #bot { color: var(--red); filter: drop-shadow(0 0 6px rgba(255, 107, 136, .6)); }
-  .vw #state { color: var(--violet); opacity: 1; text-shadow: 0 0 8px rgba(139, 92, 246, .6); }
-  .vw #pause { color: var(--violet); background: transparent; border: 1px solid color-mix(in srgb, var(--violet) 45%, transparent); border-radius: 4px; }
-  .vw #pause:hover { background: rgba(139, 92, 246, .15); box-shadow: 0 0 10px rgba(139, 92, 246, .45); }
-  .vw #pause:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+  .vw #mascot { color: var(--pink); filter: drop-shadow(0 0 5px var(--pink)); }
+  .vw #mascot text { fill: var(--cyan); }
+  .vw #mascot .screen { fill: #000; opacity: 1; }
+  .vw #state { color: var(--cyan); text-shadow: var(--glow); font-size: .92em; letter-spacing: .02em; }
+  .vw button { color: var(--pink); background: transparent; border: 1px solid color-mix(in srgb, var(--pink) 55%, transparent); border-radius: 4px; }
+  .vw button:hover { background: rgba(255, 79, 216, .12); box-shadow: 0 0 10px rgba(255, 79, 216, .45); }
+  .vw button:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
   .vw #todos { border-bottom: 1px solid var(--line); background: var(--panel); }
-  .vw #todos .in_progress { color: var(--lav); text-shadow: var(--glow); font-weight: 600; }
+  .vw #todos .in_progress { color: var(--mint); text-shadow: var(--glow); font-weight: 600; }
   .vw #todos .completed { color: var(--dim); }
   .vw .item { border-bottom: 1px solid var(--line); }
   .vw .k { opacity: 1; text-shadow: var(--glow); font-size: .74em; }
   .vw .title { color: var(--fg); }
+  .vw :is(.read, .edit, .search, .hits, .bash) .title { font-size: .92em; }
   .vw .sub { color: var(--dim); opacity: 1; }
   .vw pre.body { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; color: #d9d2ff; }
-  .vw .prompt { background: linear-gradient(90deg, rgba(139, 92, 246, .14), transparent 70%); }
-  .vw .prompt .body::before { content: '❯ '; color: var(--violet); text-shadow: var(--glow); }
+  .vw .prompt { background: linear-gradient(90deg, rgba(255, 79, 216, .10), transparent 70%); }
+  .vw .prompt .body::before { content: '❯ '; color: var(--pink); text-shadow: var(--glow); }
   .vw .thinking .body { color: var(--dim); }
-  .vw a { color: var(--lav); }
+  .vw a { color: var(--cyan); }
   .vw a:hover { text-shadow: var(--glow); text-decoration: none; }
   .vw .hits a { color: var(--mint); }
   .vw #empty { color: var(--dim); opacity: 1; }
-  .vw .prompt .k, .vw .text .k, .vw .plan .k { color: var(--violet); }
-  .vw .edit .k { color: var(--orchid); }
+  .vw .prompt .k, .vw .edit .k { color: var(--pink); }
+  .vw .text .k, .vw .plan .k { color: var(--violet); }
   .vw .read .k, .vw .agent .k, .vw .web .k { color: var(--cyan); }
   .vw .search .k, .vw .hits .k, .vw .stop .k { color: var(--mint); }
   .vw .bash .k, .vw .wait .k { color: var(--peach); }
   .vw .output .k, .vw .tool .k, .vw .thinking .k { color: var(--dim); text-shadow: none; }
   .vw .fail .k, .vw .fail .title { color: var(--red); }
   .vw .item.fresh { animation: tune-in .5s ease-out; }
-  @keyframes tune-in { from { opacity: 0; transform: translateY(4px); background: rgba(139, 92, 246, .1); } }
+  @keyframes tune-in { from { opacity: 0; transform: translateY(4px); background: rgba(79, 240, 255, .08); } }
+  @media (prefers-reduced-motion: reduce) { .vw .item.fresh { animation: none; } }
 </style>
 </head>
 <body>
-<header id="stage" class="idle">
-  <button id="pause" title="Pausar" aria-label="Pausar">❚❚</button>
-  <div id="botwrap">
-    <svg id="bot" viewBox="0 0 128 128" aria-hidden="true">
-      <path class="case" d="M50 30 38 12M78 30l12-18"/>
-      <circle class="bulb b1" cx="38" cy="11" r="6"/>
-      <circle class="bulb b2" cx="90" cy="11" r="6"/>
-      <rect class="case" x="10" y="30" width="108" height="80" rx="18"/>
-      <rect class="screen" x="22" y="42" width="84" height="56" rx="10"/>
-      <text id="face" x="64" y="79" text-anchor="middle">•_•</text>
-      <path class="tear" d="M46 84c0 3-2 5-4 5s-4-2-4-5 4-8 4-8 4 5 4 8z"/>
-    </svg>
-    <div id="bubble" aria-hidden="true"><i></i><i></i><i></i></div>
-  </div>
-  <div id="state" role="status"></div>
+<header>
+  <svg id="mascot" viewBox="0 0 128 128" aria-hidden="true">
+    <path class="case" d="M50 30 38 10M78 30l12-20"/>
+    <rect class="case" x="10" y="30" width="108" height="80" rx="18"/>
+    <rect class="screen" x="22" y="42" width="84" height="56" rx="10"/>
+    <text id="face" x="64" y="79" text-anchor="middle">T_T</text>
+  </svg>
+  <span id="state"></span><button id="pause"></button>
 </header>
 <div id="todos" hidden></div>
 <div id="empty"></div>
@@ -145,51 +104,11 @@
   const MAX = 400; // mesmo limite do feed na extensão
   let UI = { labels: {}, empty: '', pause: 'Pause', resume: 'Resume' }; // textos chegam da extensão no idioma escolhido
   let isPaused = false;
-  // Cara do robô enquanto trabalha, pelo tipo do passo.
-  const FACE = { read: 'o_o', search: 'O_O', hits: '^o^', bash: '>_>', output: 'o_o', edit: '>_<', plan: '•_•', agent: '◉_◉', web: 'O_O', tool: 'o_o', wait: '?_?' };
-  const ACTIONS = new Set(Object.keys(FACE));
-  const THINK_AFTER_MS = 1600; // sem passo novo por esse tempo, com o turno aberto: a IA está pensando
-  const DONE_MS = 4000, FAIL_MS = 2500; // quanto a cara de "terminou" / "deu erro" fica antes de voltar
+  // A cara do mascote acompanha o último passo.
+  const FACE = { prompt: '•_•', text: '•‿•', thinking: '-_-', read: 'o_o', search: 'O_O', hits: '^o^', bash: '>_>', output: 'o_o', edit: '>_<', plan: '•_•', agent: '◉_◉', web: 'O_O', wait: '?_?', fail: 'T_T', stop: '^_^', tool: 'o_o' };
   const $ = (id) => document.getElementById(id);
-  const feedEl = $('feed'), todosEl = $('todos'), stage = $('stage'), faceEl = $('face');
+  const feedEl = $('feed'), todosEl = $('todos');
 
-  // ---------- robô ----------
-  let mode = 'idle', face = '•_•', active = false, settle = 0;
-  function setMode(m, f) {
-    mode = m; face = f;
-    stage.className = m;
-    faceEl.textContent = f;
-  }
-  function later(ms, fn) { clearTimeout(settle); settle = setTimeout(fn, ms); }
-  const rest = () => (active ? setMode('thinking', '•_•') : setMode('idle', '•_•'));
-
-  function react(it) {
-    const k = it.kind;
-    if (it.end) { // fim do turno: comemora ou chora, depois descansa
-      active = false;
-      if (k === 'stop') { setMode('done', '^_^'); later(DONE_MS, rest); } else { setMode('fail', 'T_T'); later(DONE_MS, rest); }
-      return;
-    }
-    active = true;
-    if (k === 'prompt' || k === 'thinking') { clearTimeout(settle); return setMode('thinking', '•_•'); }
-    if (k === 'text') { setMode('working', '•‿•'); return later(THINK_AFTER_MS, rest); }
-    if (k === 'fail') { setMode('fail', 'T_T'); return later(FAIL_MS, rest); }
-    if (k === 'wait') { clearTimeout(settle); return setMode('thinking', '?_?'); }
-    if (ACTIONS.has(k)) { setMode('working', FACE[k]); later(THINK_AFTER_MS, rest); }
-  }
-
-  // Piscada de vez em quando, só parado ou pensando (trabalhando, a cara é do passo).
-  (function blink() {
-    setTimeout(() => {
-      if ((mode === 'idle' || mode === 'thinking') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        faceEl.textContent = '-_-';
-        setTimeout(() => { faceEl.textContent = face; }, 140);
-      }
-      blink();
-    }, 2800 + Math.random() * 2600);
-  })();
-
-  // ---------- feed ----------
   function el(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -226,10 +145,11 @@
   function add(it, fresh) {
     $('empty').hidden = true;
     const d = render(it);
-    if (fresh) { d.classList.add('fresh'); react(it); }
+    if (fresh) d.classList.add('fresh');
     feedEl.append(d);
     while (feedEl.children.length > MAX) feedEl.firstChild.remove();
     if (stick) scrollTo(0, document.body.scrollHeight);
+    $('face').textContent = FACE[it.kind] || 'o_o';
   }
   function showTodos(list) {
     todosEl.textContent = '';
@@ -237,12 +157,7 @@
     const mark = { completed: '✓', in_progress: '▸', pending: '·' };
     for (const t of list || []) todosEl.append(el('div', t.status, `${mark[t.status] || '·'} ${t.content}`));
   }
-  function setPaused(p) {
-    isPaused = p;
-    const b = $('pause');
-    b.textContent = p ? '▶' : '❚❚';
-    b.title = b.ariaLabel = p ? UI.resume : UI.pause;
-  }
+  const setPaused = (p) => { isPaused = p; $('pause').textContent = p ? UI.resume : UI.pause; };
   function setUi(ui) {
     UI = ui;
     $('empty').textContent = ui.empty;
@@ -251,8 +166,8 @@
   const setSkin = (s) => document.body.classList.toggle('vw', s !== 'vscode');
 
   addEventListener('message', ({ data: m }) => {
-    if (m.type === 'init') { setSkin(m.skin); setUi(m.ui); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
     if (m.type === 'ui') setUi(m.ui);
+    if (m.type === 'init') { setSkin(m.skin); setUi(m.ui); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
     if (m.type === 'add') add(m.item, true);
     if (m.type === 'todos') showTodos(m.todos);
     if (m.type === 'state') $('state').textContent = m.state;

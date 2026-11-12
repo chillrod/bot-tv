@@ -33,14 +33,14 @@ function makeHighlight() {
   }
   return vscode.window.createTextEditorDecorationType({
     isWholeLine: true,
-    backgroundColor: 'rgba(139, 92, 246, 0.14)',
-    borderColor: '#b18cff',
+    backgroundColor: 'rgba(255, 79, 216, 0.10)',
+    borderColor: '#ff4fd8',
     borderStyle: 'solid',
     borderWidth: '0 0 0 2px',
-    overviewRulerColor: '#b18cff',
+    overviewRulerColor: '#ff4fd8',
     overviewRulerLane: vscode.OverviewRulerLane.Center,
     // shortcut: o brilho entra pelo CSS de textDecoration (truque aceito pela API de decorações); se o VS Code passar a filtrar, sobra o fundo e a borda
-    textDecoration: 'none; text-shadow: 0 0 6px rgba(177, 140, 255, 0.9)',
+    textDecoration: 'none; text-shadow: 0 0 6px rgba(255, 79, 216, 0.85)',
   });
 }
 

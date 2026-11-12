@@ -1,6 +1,6 @@
 {
   "name": "bot-tv",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Watch Claude Code work: every read, search, command and edit, live in VS Code.",
   "author": { "name": "chillrod" },
   "license": "MIT"

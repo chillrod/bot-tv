@@ -27,7 +27,7 @@ If the agent's tool fails, you see that it failed. No fake diffs.
 
 ## the look
 
-By default the panel is deep black with a purple glow, all in Roboto Mono, and the little TV robot sits in the middle of it, alive: it breathes and blinks when nothing's going on, tilts its head with a `•••` bubble while the agent thinks, bounces while it works (`o_o` reading, `O_O` searching, `>_<` editing), hops when it's done (`^_^`) and cries a tear when something breaks (`T_T`). The lines the agent reads glow purple in your editor and a tiny TV sits in the gutter where it's looking.
+By default the panel goes vaporwave: deep black, neon pink and cyan with a little glow, all in Roboto Mono, and the mascot up top making faces at whatever the agent is doing (`o_o` reading, `O_O` searching, `>_<` editing, `^_^` done, `T_T` when something broke). The lines it reads glow pink in your editor and a tiny TV sits in the gutter where the agent is looking.
 
 Want the whole editor to match? Pick **bot_tv Vaporwave** in *Preferences: Color Theme*. Prefer something calmer? Set `"botTv.skin": "vscode"` and the panel just follows your theme.
 

@@ -3,7 +3,7 @@
   "displayName": "bot_tv",
   "description": "Watch Claude Code work: every read, search, command and edit, live in your editor.",
   "publisher": "chillrod",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": { "type": "git", "url": "https://github.com/chillrod/bot-tv" },
@@ -22,7 +22,7 @@
     "configuration": {
       "title": "bot_tv",
       "properties": {
-        "botTv.skin": { "type": "string", "enum": ["vaporwave", "vscode"], "default": "vaporwave", "enumDescriptions": ["Deep black and purple glow, Roboto Mono.", "Follows your VS Code theme."], "description": "Look of the bot_tv panel and of the lines it highlights in the editor." },
+        "botTv.skin": { "type": "string", "enum": ["vaporwave", "vscode"], "default": "vaporwave", "enumDescriptions": ["Deep black, neon pink and cyan glow, Roboto Mono.", "Follows your VS Code theme."], "description": "Look of the bot_tv panel and of the lines it highlights in the editor." },
         "botTv.language": { "type": "string", "enum": ["auto", "en", "pt-BR"], "default": "auto", "enumDescriptions": ["Same language as VS Code (which follows your system by default).", "English", "Português (Brasil)"], "description": "Language of the bot_tv panel and status bar." },
         "botTv.port": { "type": "number", "default": 7337, "description": "Local port the Claude Code plugin sends events to." },
         "botTv.stepMs": { "type": "number", "default": 700, "description": "Minimum time (ms) each visual step stays on screen before the next one." }
