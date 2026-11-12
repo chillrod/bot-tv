@@ -35,6 +35,8 @@
   @media (prefers-reduced-motion: reduce) { #xp.gain i::after { animation: none; } #xp i { transition: none; } }
   #upd { flex: none; align-self: flex-start; justify-self: start; width: max-content; margin: 4px 0 0; padding: 1px 8px; border-radius: 10px; font: inherit; font-size: .72em; cursor: pointer; border: 1px solid currentColor; color: var(--vscode-button-foreground); background: var(--vscode-button-background); animation: pulse 1.8s ease-in-out infinite; }
   #upd[hidden] { display: none; }
+  #upd[data-kind=outdated] { color: #1a1300; background: #ffb454; }
+  .vw #upd[data-kind=outdated] { color: var(--bg); background: var(--peach); box-shadow: 0 0 12px rgba(255, 180, 84, .6); }
   .vw #upd { color: var(--bg); background: var(--mint); border-color: transparent; box-shadow: 0 0 12px rgba(124, 245, 200, .7); font-weight: 600; }
   @keyframes pulse { 50% { opacity: .55; } }
   @media (prefers-reduced-motion: reduce) { #upd { animation: none; } }
@@ -257,9 +259,9 @@
   function setUpdate(u) {
     const b = $('upd');
     b.hidden = !u;
-    if (u) { b.textContent = `★ ${u.text}`; b.title = u.tip; }
+    if (u) { b.textContent = `${u.kind === 'outdated' ? '⚠' : '★'} ${u.text}`; b.title = u.tip; b.dataset.kind = u.kind; }
   }
-  $('upd').addEventListener('click', () => { setUpdate(null); vscode.postMessage({ type: 'ackUpdate' }); });
+  $('upd').addEventListener('click', () => { const k = $('upd').dataset.kind; setUpdate(null); if (k === 'updated') vscode.postMessage({ type: 'ackUpdate' }); });
   function levelUp(level) {
     const t = $('toast');
     t.textContent = `★ ${UI.levelUp} lv ${level}`;
@@ -288,6 +290,7 @@
     if (m.type === 'ui') setUi(m.ui);
     if (m.type === 'projects') { projects = m.projects; renderTabs(); }
     if (m.type === 'following') setFollowing(m.following);
+    if (m.type === 'update') setUpdate(m.update);
     if (m.type === 'xp') setXp(m.xp);
     if (m.type === 'levelup') levelUp(m.level);
     if (m.type === 'init') { following = m.following; projects = m.projects; setXp(m.xp); setUpdate(m.update); setSkin(m.skin); setUi(m.ui); renderTabs(); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }

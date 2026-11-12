@@ -41,3 +41,13 @@ export function fmtDuration(seconds: number): string {
   if (s < 3600) return `${Math.floor(s / 60)}min`;
   return `${Math.floor(s / 3600)}h${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`;
 }
+
+// true se a versão `a` é maior que `b` (só números separados por ponto: 0.6.0 > 0.5.9)
+export function isNewer(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}

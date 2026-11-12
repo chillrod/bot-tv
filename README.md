@@ -75,7 +75,7 @@ That installs the extension that ships inside the plugin. Reload VS Code and hit
 
 **the robot levels up.** MMO-style. Every second the agent spends working (prompt to done) is 1 XP, and levels follow the Tibia curve: lv 2 at 100 XP, lv 10 at 9,300, lv 50 at about 1.8M, each level asking more than the last. No cap. The badge and bar live under the robot; hover for the XP numbers. Sessions left idle don't farm XP. Nice try.
 
-**it tells you when it updated.** After the extension updates, a pulsing `★ updated to vX` badge sits in the panel until you click it away.
+**it tells you when it updated.** After the extension updates, a pulsing `★ updated to vX` badge sits in the panel until you click it away. And since `/plugin` updates the plugin but not the VS Code extension, a `⚠ plugin vX is newer` badge shows when the plugin ran ahead of the extension: run `/bot-tv-vscode` and reload VS Code.
 
 **the robot reacts.** `o_o` reading · `O_O` searching · `^o^` found it · `>_<` editing · `^_^` done · `T_T` something broke · `★_★` level up.
 

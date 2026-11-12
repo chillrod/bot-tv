@@ -4,6 +4,9 @@ import type { EngineInterface, Register } from 'claude-code'
 // shortcut: porta fixa; se alguém mudar botTv.port, virar userConfig do plugin
 const EVENT_URL = 'http://127.0.0.1:7337/event'
 
+// Mesma versão do .claude-plugin/plugin.json (o selfcheck confere). A extensão compara com a dela e avisa se ficou para trás.
+const PLUGIN_VERSION = '0.6.0'
+
 let sessionId: string | undefined
 
 // Envia um passo para a extensão. VS Code fechado ou extensão ausente: segue sem acompanhar, nunca atrapalha o Claude.
@@ -13,7 +16,7 @@ async function send($: EngineInterface, ev: Record<string, unknown>) {
     await $.http.fetch(EVENT_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...ev, session_id: sessionId, cwd: await $.session.cwd() }),
+      body: JSON.stringify({ ...ev, plugin_version: PLUGIN_VERSION, session_id: sessionId, cwd: await $.session.cwd() }),
     })
   } catch {
     // sem extensão ouvindo
