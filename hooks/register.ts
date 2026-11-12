@@ -22,9 +22,29 @@ async function send($: EngineInterface, ev: Record<string, unknown>) {
 
 const COMMAND = 'bot-tv-vscode'
 
+// Idioma do sistema, como a extensão faz no modo "auto".
+function systemIsPt() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase().startsWith('pt')
+  } catch {
+    return false
+  }
+}
+const MSG = systemIsPt()
+  ? {
+      describe: 'Instala no VS Code a extensão que mostra os passos do Claude',
+      installed: 'Extensão bot_tv instalada. Recarregue a janela do VS Code (Developer: Reload Window) e clique na TV da barra de atividades, à esquerda.',
+      manual: (vsix: string) => `Não consegui rodar o comando \`code\`. Instale à mão: code --install-extension "${vsix}"`,
+    }
+  : {
+      describe: 'Installs the VS Code extension that shows what Claude is doing',
+      installed: 'bot_tv extension installed. Reload the VS Code window (Developer: Reload Window) and click the TV in the activity bar on the left.',
+      manual: (vsix: string) => `Couldn't run the \`code\` command. Install it by hand: code --install-extension "${vsix}"`,
+    }
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: COMMAND, description: 'Instala no VS Code a extensão que mostra os passos do Claude' })
+    await $.command.register({ name: COMMAND, description: MSG.describe })
     return next(e)
   })
 
@@ -34,12 +54,12 @@ export const register: Register = on => {
     for (const argv of [['code', '--install-extension', vsix, '--force'], ['cmd', '/c', 'code', '--install-extension', vsix, '--force']]) {
       try {
         const r = await $.process.run(argv, { timeoutMs: 120_000 })
-        if (r.exitCode === 0) return { text: 'Extensão bot_tv instalada. Recarregue a janela do VS Code (Developer: Reload Window) e clique na TV da barra de atividades, à esquerda.' }
+        if (r.exitCode === 0) return { text: MSG.installed }
       } catch {
         // `code` não encontrado por esse caminho: tenta o próximo
       }
     }
-    return { text: `Não consegui rodar o comando \`code\`. Instale à mão: code --install-extension "${vsix}"` }
+    return { text: MSG.manual(vsix) }
   })
 
   on('prompt.submit', async ($, e, next) => {

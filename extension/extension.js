@@ -5,6 +5,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { pick } = require('./i18n');
+
+const T = () => pick(vscode.workspace.getConfiguration('botTv').get('language'), vscode.env.language);
 
 const EDITS = new Set(['Edit', 'Write', 'MultiEdit']);
 const MAX_BODY = 50 * 1024 * 1024; // Write pode mandar arquivo grande; acima disso descarta
@@ -17,7 +20,7 @@ const OUTPUT_LINES = 30;  // linhas de saída de comando mostradas no feed
 const before = new Map();      // id do tool_use -> conteúdo do arquivo antes da edição
 const queue = [];
 const feed = [];
-let paused = false, busy = false, state = 'aguardando IA', todos = [], nextId = 1, viewShown = false;
+let paused = false, busy = false, state = '', todos = [], nextId = 1, viewShown = false;
 let agent = false; // o passo sendo mostrado veio de um subagente
 let out, status, hl, face, view, extUri;
 
@@ -30,14 +33,14 @@ function makeHighlight() {
   }
   return vscode.window.createTextEditorDecorationType({
     isWholeLine: true,
-    backgroundColor: 'rgba(255, 79, 216, 0.10)',
-    borderColor: '#ff4fd8',
+    backgroundColor: 'rgba(139, 92, 246, 0.14)',
+    borderColor: '#b18cff',
     borderStyle: 'solid',
     borderWidth: '0 0 0 2px',
-    overviewRulerColor: '#ff4fd8',
+    overviewRulerColor: '#b18cff',
     overviewRulerLane: vscode.OverviewRulerLane.Center,
     // shortcut: o brilho entra pelo CSS de textDecoration (truque aceito pela API de decorações); se o VS Code passar a filtrar, sobra o fundo e a borda
-    textDecoration: 'none; text-shadow: 0 0 6px rgba(255, 79, 216, 0.85)',
+    textDecoration: 'none; text-shadow: 0 0 6px rgba(177, 140, 255, 0.9)',
   });
 }
 
@@ -54,10 +57,12 @@ function activate(ctx) {
   ctx.subscriptions.push(
     out, status, face, { dispose: () => hl.dispose() },
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (!e.affectsConfiguration('botTv.skin')) return;
-      hl.dispose();
-      hl = makeHighlight();
-      post({ type: 'skin', skin: skin() });
+      if (e.affectsConfiguration('botTv.skin')) {
+        hl.dispose();
+        hl = makeHighlight();
+        post({ type: 'skin', skin: skin() });
+      }
+      if (e.affectsConfiguration('botTv.language')) { setState(''); post({ type: 'ui', ui: T().ui }); }
     }),
     vscode.workspace.registerTextDocumentContentProvider('bottv-before', {
       provideTextDocumentContent: (uri) => before.get(uri.query) ?? '',
@@ -69,7 +74,7 @@ function activate(ctx) {
   const port = vscode.workspace.getConfiguration('botTv').get('port');
   const server = http.createServer(handle);
   // shortcut: só uma janela do VS Code escuta a porta; para várias janelas, rotear pelo cwd do evento
-  server.on('error', (e) => { out.appendLine(`servidor não subiu na porta ${port}: ${e.message}`); setState('porta ocupada'); });
+  server.on('error', (e) => { out.appendLine(`servidor não subiu na porta ${port}: ${e.message}`); setState(T().portBusy); });
   server.listen(port, '127.0.0.1', () => out.appendLine(`ouvindo em 127.0.0.1:${port}`));
   ctx.subscriptions.push({ dispose: () => server.close() });
   setState(state);
@@ -79,11 +84,15 @@ function activate(ctx) {
 
 function resolveWebviewView(v) {
   view = v;
-  v.webview.options = { enableScripts: true };
+  const media = vscode.Uri.joinPath(extUri, 'media');
+  v.webview.options = { enableScripts: true, localResourceRoots: [media] };
   const nonce = crypto.randomBytes(16).toString('hex');
-  v.webview.html = fs.readFileSync(path.join(extUri.fsPath, 'media', 'feed.html'), 'utf8').replace(/%NONCE%/g, nonce);
+  v.webview.html = fs.readFileSync(path.join(extUri.fsPath, 'media', 'feed.html'), 'utf8')
+    .replace(/%NONCE%/g, nonce)
+    .replace(/%CSP%/g, v.webview.cspSource)
+    .replace(/%FONT%/g, v.webview.asWebviewUri(vscode.Uri.joinPath(media, 'fonts', 'roboto-mono-latin-wght-normal.woff2')).toString());
   v.webview.onDidReceiveMessage((m) => {
-    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin() });
+    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui });
     if (m.type === 'toggle') toggle();
     if (m.type === 'open') reveal(m.file, m.line, 1).catch((e) => out.appendLine(`erro ao abrir: ${e.message}`));
   });
@@ -104,8 +113,8 @@ function addFeed(item) {
 
 function setState(text) {
   state = text;
-  status.text = paused ? '$(debug-pause) bot_tv: pausado' : `$(device-camera-video) bot_tv: ${text}`;
-  status.tooltip = 'bot_tv — clique para pausar/retomar';
+  status.text = paused ? `$(debug-pause) bot_tv: ${T().paused}` : `$(device-camera-video) bot_tv${text ? `: ${text}` : ''}`;
+  status.tooltip = T().tooltip;
   status.show();
   post({ type: 'state', state });
 }
@@ -175,18 +184,19 @@ async function drain() {
 // ---------- o que cada evento mostra (retorna true quando mexeu no editor) ----------
 
 async function show(ev) {
+  const s = T();
   switch (ev.hook_event_name) {
-    case 'UserPromptSubmit': setState('pensando'); addFeed({ kind: 'prompt', title: 'Você', body: ev.prompt }); return false;
-    case 'AssistantText': addFeed({ kind: 'text', title: 'IA', body: ev.text?.trim() }); return false;
-    case 'AssistantThinking': addFeed({ kind: 'thinking', title: 'Raciocínio', body: ev.text?.trim() }); return false;
-    case 'Notification': setState('esperando você'); addFeed({ kind: 'wait', title: ev.message || 'Esperando você' }); return false;
+    case 'UserPromptSubmit': setState(s.thinking); addFeed({ kind: 'prompt', title: s.you, body: ev.prompt }); return false;
+    case 'AssistantText': addFeed({ kind: 'text', title: s.ai, body: ev.text?.trim() }); return false;
+    case 'AssistantThinking': addFeed({ kind: 'thinking', title: s.reasoning, body: ev.text?.trim() }); return false;
+    case 'Notification': setState(s.waiting); addFeed({ kind: 'wait', title: ev.message || s.waitingTitle }); return false;
     case 'Stop': {
       const cut = ev.reason === 'aborted' || ev.reason === 'error';
-      setState(cut ? 'interrompido' : 'terminou');
-      addFeed({ kind: cut ? 'fail' : 'stop', title: ev.reason === 'aborted' ? 'Interrompido' : ev.reason === 'error' ? 'Parou com erro' : 'Terminou' });
+      setState(cut ? s.interrupted : s.done);
+      addFeed({ kind: cut ? 'fail' : 'stop', end: true, title: ev.reason === 'aborted' ? s.interruptedTitle : ev.reason === 'error' ? s.errorTitle : s.doneTitle });
       return false;
     }
-    case 'SubagentStop': addFeed({ kind: 'stop', title: 'Subagente terminou' }); return false;
+    case 'SubagentStop': addFeed({ kind: 'stop', title: s.subagentDone }); return false;
     case 'PreToolUse': return pre(ev, ev.tool_name, ev.tool_input || {});
     case 'PostToolUse': return after(ev, ev.tool_name, ev.tool_input || {});
   }
@@ -194,46 +204,48 @@ async function show(ev) {
 }
 
 async function pre(ev, t, i) {
+  const s = T();
   const file = fileOf(ev);
-  if (EDITS.has(t)) { setState(`editando ${rel(file)}`); return false; } // o diff sai no Post
+  if (EDITS.has(t)) { setState(s.editing(rel(file))); return false; } // o diff sai no Post
   if (t === 'Read' && file) {
-    setState(`lendo ${rel(file)}`);
-    addFeed({ kind: 'read', title: rel(file), sub: i.offset || i.limit ? `linhas ${i.offset || 1}–${(i.offset || 1) + (i.limit || 0) - 1}` : '', file, line: i.offset || 1 });
+    setState(s.reading(rel(file)));
+    addFeed({ kind: 'read', title: rel(file), sub: i.offset || i.limit ? s.lines(i.offset || 1, (i.offset || 1) + (i.limit || 0) - 1) : '', file, line: i.offset || 1 });
     return reveal(file, i.offset, i.limit);
   }
   if (t === 'Grep') {
-    setState(`buscando ${i.pattern}`);
+    setState(s.searching(i.pattern));
     addFeed({ kind: 'search', title: i.pattern, sub: [i.path && rel(resolvePath(ev.cwd, i.path)), i.glob].filter(Boolean).join(' · ') });
     return false;
   }
-  if (t === 'Glob') { setState(`listando ${i.pattern}`); addFeed({ kind: 'search', title: i.pattern, sub: 'arquivos' }); return false; }
+  if (t === 'Glob') { setState(s.listing(i.pattern)); addFeed({ kind: 'search', title: i.pattern, sub: s.files }); return false; }
   if (t === 'Bash') {
     const cwd = bashCwd(ev);
     const r = readTarget(i.command || '', cwd);
-    setState(i.description || 'rodando comando');
-    addFeed({ kind: 'bash', title: i.description || 'Comando', body: i.command, code: true, file: r?.file, line: r?.start || 1 });
+    setState(i.description || s.runningCommand);
+    addFeed({ kind: 'bash', title: i.description || s.command, body: i.command, code: true, file: r?.file, line: r?.start || 1 });
     return r ? reveal(r.file, r.start, r.count) : false;
   }
   if (t === 'TodoWrite') {
     todos = (i.todos || []).map((x) => ({ content: x.content, status: x.status }));
     post({ type: 'todos', todos });
     const cur = todos.find((x) => x.status === 'in_progress');
-    addFeed({ kind: 'plan', title: cur ? `Agora: ${cur.content}` : 'Plano atualizado' });
+    addFeed({ kind: 'plan', title: cur ? s.now(cur.content) : s.planUpdated });
     return false;
   }
-  if (t === 'Task' || t === 'Agent') { setState('subagente trabalhando'); addFeed({ kind: 'agent', title: i.description || 'Subagente', body: i.prompt }); return false; }
-  if (t === 'WebSearch') { setState('pesquisando na web'); addFeed({ kind: 'web', title: i.query }); return false; }
-  if (t === 'WebFetch') { setState('lendo página'); addFeed({ kind: 'web', title: i.url, sub: i.prompt }); return false; }
+  if (t === 'Task' || t === 'Agent') { setState(s.subagentWorking); addFeed({ kind: 'agent', title: i.description || s.subagent, body: i.prompt }); return false; }
+  if (t === 'WebSearch') { setState(s.webSearch); addFeed({ kind: 'web', title: i.query }); return false; }
+  if (t === 'WebFetch') { setState(s.readingPage); addFeed({ kind: 'web', title: i.url, sub: i.prompt }); return false; }
   addFeed({ kind: 'tool', title: t });
   return false;
 }
 
 async function after(ev, t, i) {
+  const s = T();
   const file = fileOf(ev);
   if (ev.isError) { // a ferramenta rodou e falhou: nada mudou, então nada de diff nem de "achou"
     const msg = (responseText(ev.tool_response) || ev.tool_text || '').split(/\r?\n/).slice(0, OUTPUT_LINES).join('\n');
-    setState(`${t} falhou`);
-    addFeed({ kind: 'fail', title: `${t} falhou${file ? ` · ${rel(file)}` : ''}`, body: msg, code: true });
+    setState(s.failed(t));
+    addFeed({ kind: 'fail', title: `${s.failed(t)}${file ? ` · ${rel(file)}` : ''}`, body: msg, code: true });
     return false;
   }
   if (EDITS.has(t) && file) return diff(ev, file);
@@ -244,9 +256,9 @@ async function after(ev, t, i) {
   const sole = t === 'Bash' ? grepSoleFile(i.command || '', cwd) : i.path && isFile(resolvePath(cwd, i.path)) ? resolvePath(cwd, i.path) : null;
   const hits = findHits(text, cwd, sole);
   const lines = text.split(/\r?\n/);
-  const outBody = t === 'Bash' && text.trim() ? lines.slice(0, OUTPUT_LINES).join('\n') + (lines.length > OUTPUT_LINES ? `\n… +${lines.length - OUTPUT_LINES} linhas` : '') : '';
+  const outBody = t === 'Bash' && text.trim() ? lines.slice(0, OUTPUT_LINES).join('\n') + (lines.length > OUTPUT_LINES ? `\n${s.moreLines(lines.length - OUTPUT_LINES)}` : '') : '';
   if (hits.length || outBody) {
-    addFeed({ kind: hits.length ? 'hits' : 'output', title: hits.length ? `${hits.length} resultado${hits.length > 1 ? 's' : ''}` : 'Saída', body: hits.length ? '' : outBody, code: true, hits: hits.map((h) => ({ ...h, rel: rel(h.file) })) });
+    addFeed({ kind: hits.length ? 'hits' : 'output', title: hits.length ? s.results(hits.length) : s.output, body: hits.length ? '' : outBody, code: true, hits: hits.map((h) => ({ ...h, rel: rel(h.file) })) });
   }
   return hits.length ? revealHits(hits) : false;
 }
@@ -293,9 +305,10 @@ async function diff(ev, file) {
     const at = text.indexOf(needle);
     if (at >= 0) selection = new vscode.Range(posAt(text, at), posAt(text, at + needle.length));
   }
-  setState(`editou ${rel(file)}`);
-  addFeed({ kind: 'edit', title: rel(file), sub: ev.tool_name === 'Write' ? 'arquivo escrito' : '', file, line: selection ? selection.start.line + 1 : 1 });
-  await vscode.commands.executeCommand('vscode.diff', left, right, `${path.basename(file)} ← IA`, { preview: true, preserveFocus: true, selection });
+  const s = T();
+  setState(s.edited(rel(file)));
+  addFeed({ kind: 'edit', title: rel(file), sub: ev.tool_name === 'Write' ? s.fileWritten : '', file, line: selection ? selection.start.line + 1 : 1 });
+  await vscode.commands.executeCommand('vscode.diff', left, right, s.diffTitle(path.basename(file)), { preview: true, preserveFocus: true, selection });
   return true;
 }
 

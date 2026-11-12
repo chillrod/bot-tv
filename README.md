@@ -27,9 +27,11 @@ If the agent's tool fails, you see that it failed. No fake diffs.
 
 ## the look
 
-By default the panel goes full vaporwave: deep black, neon pink and cyan with a little glow, a faded sunset grid at the bottom, and the mascot up top making faces at whatever the agent is doing (`o_o` reading, `O_O` searching, `>_<` editing, `^_^` done, `T_T` when something broke). The lines it reads glow pink in your editor and a tiny TV sits in the gutter where the agent is looking.
+By default the panel is deep black with a purple glow, all in Roboto Mono, and the little TV robot sits in the middle of it, alive: it breathes and blinks when nothing's going on, tilts its head with a `•••` bubble while the agent thinks, bounces while it works (`o_o` reading, `O_O` searching, `>_<` editing), hops when it's done (`^_^`) and cries a tear when something breaks (`T_T`). The lines the agent reads glow purple in your editor and a tiny TV sits in the gutter where it's looking.
 
 Want the whole editor to match? Pick **bot_tv Vaporwave** in *Preferences: Color Theme*. Prefer something calmer? Set `"botTv.skin": "vscode"` and the panel just follows your theme.
+
+It speaks English and Portuguese, following your VS Code language (which follows your system unless you changed it). Force one with `"botTv.language": "en"` or `"pt-BR"`.
 
 ## install
 
@@ -80,11 +82,11 @@ To hack on the extension: `code --extensionDevelopmentPath=./extension <some pro
 
 ## rough edges
 
-- one VS Code window at a time owns the port, the second one shows "porta ocupada"
+- one VS Code window at a time owns the port, the second one shows "port in use"
 - several Claude sessions at once all land in the same feed
 - the agent's internal thinking doesn't show up: Claude Code doesn't hand it over, only what the agent writes
 - the plugin uses the new hooks-module API (Claude Code 2.1.275+), which is still early access
-- the UI speaks Portuguese for now. PRs for i18n welcome
+- English and Portuguese only. Another language is one more block in `extension/i18n.js`, PRs welcome
 - Claude Code only. A Codex adapter would just need to post the same events
 
 ## license
