@@ -72,9 +72,12 @@
   #state.fail { color: var(--vscode-errorForeground); }
   .item.fail { border-left: 3px solid var(--vscode-errorForeground); }
   .tab .n { margin-left: 5px; font-size: .9em; opacity: .6; }
-  details.body summary { cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--vscode-editor-font-family); font-size: .9em; }
-  details.body summary::-webkit-details-marker { display: none; }
-  details.body .more { margin-left: 6px; opacity: .7; }
+  details.fold summary { margin-top: 4px; cursor: pointer; list-style: none; font-size: .85em; opacity: .8; }
+  details.fold summary::-webkit-details-marker { display: none; }
+  details.fold summary::before { content: '▸ '; }
+  details.fold[open] summary::before { content: '▾ '; }
+  .diff .add { color: var(--vscode-gitDecoration-addedResourceForeground, #3fb950); }
+  .diff .del { color: var(--vscode-gitDecoration-deletedResourceForeground, #f85149); }
 
   /* ---- rodapé fixo: nível, XP e o jogo (secundário, dá para esconder) ---- */
   #arcade { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; background: var(--vscode-sideBar-background); border-top: 1px solid var(--vscode-panel-border); }
@@ -82,25 +85,14 @@
   #arcade #lv { gap: 3px; padding: 0; border: 0; }
   #pct { opacity: .7; font-variant-numeric: tabular-nums; }
   #strip { position: relative; line-height: 0; }
-  #game { width: 100%; aspect-ratio: 240 / 40; image-rendering: pixelated; display: block; }
+  #game { width: 100%; aspect-ratio: 240 / 60; image-rendering: pixelated; display: block; }
   #gtoast { position: absolute; right: 6px; top: 4px; max-width: 80%; padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75em; line-height: 1.5; color: #f0d040; background: rgba(0, 0, 0, .8); pointer-events: none; }
   #gtoast[hidden] { display: none; }
   #abar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 6px 10px 7px; font-size: .82em; font-variant-numeric: tabular-nums; }
   #abar b { font-weight: 600; }
   #gFoe { flex: 1 1 8em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
   .lnk { padding: 1px 4px; border: 0; background: transparent; color: var(--vscode-textLink-foreground); font-size: inherit; }
-  #drawer { display: grid; gap: 10px; max-height: 40vh; overflow: auto; padding: 10px 10px 12px; border-top: 1px dashed var(--vscode-panel-border); }
-  #drawer[hidden] { display: none; }
-  #drawer h4 { margin: 0; font-size: .75em; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
-  #shop { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .up { display: grid; gap: 2px; padding: 7px 8px; text-align: left; font-size: .8em; }
-  .up:disabled { opacity: .45; cursor: not-allowed; }
-  .up .n { display: flex; justify-content: space-between; gap: 6px; font-weight: 600; }
-  .up .lvl, .up .d { font-weight: 400; opacity: .7; }
-  #relics { display: flex; flex-wrap: wrap; gap: 4px; font-size: .8em; }
-  #relics span { padding: 0 5px; border: 1px solid var(--vscode-panel-border); border-radius: 3px; }
-  #relics em { opacity: .6; }
-  #arcade.off #strip, #arcade.off #drawer, #arcade.off .g { display: none; }
+  #arcade.off #strip, #arcade.off .g { display: none; }
 
   /* ---- canal de previsão: a TV muda de canal quando o Claude fica parado (só com botTv.weatherCity) ---- */
   #ws { position: fixed; left: 0; right: 0; z-index: 1; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; cursor: pointer; color: #fff; font-family: var(--vscode-editor-font-family), monospace; background: linear-gradient(180deg, #0a1050, #1c2a8c 55%, #3a2a8c); }
@@ -188,15 +180,15 @@
   .vw .body { margin-top: 6px; }
   .vw #arcade #lv { background: none; box-shadow: none; }
   .vw #pct { color: var(--dim); opacity: 1; }
-  .vw .up { border-radius: 4px; }
   .vw #state.edit, .vw #state.prompt { color: var(--pink); }
   .vw #state.search, .vw #state.hits, .vw #state.stop { color: var(--mint); }
   .vw #state.bash, .vw #state.wait { color: var(--peach); }
   .vw #state.text, .vw #state.plan { color: var(--violet); }
   .vw #state.fail { color: var(--red); }
   .vw .item.fail { border-left-color: var(--red); background: rgba(255, 92, 122, .05); }
-  .vw details.body summary { color: #d9d2ff; font-family: var(--mono); }
-  .vw details.body .more { color: var(--cyan); opacity: 1; }
+  .vw details.fold summary { color: var(--cyan); opacity: 1; }
+  .vw .diff .add { color: var(--mint); background: rgba(124, 245, 200, .06); }
+  .vw .diff .del { color: var(--red); background: rgba(255, 92, 122, .06); }
   .vw .tab .n { color: var(--dim); text-shadow: none; opacity: 1; }
   .vw #arcade { background: var(--bg); border-top-color: var(--line); }
   .vw #abar { color: var(--dim); }
@@ -204,13 +196,6 @@
   .vw #gFoe { color: var(--fg); }
   .vw .lnk, .vw .lnk:hover { border: 0; color: var(--cyan); background: transparent; box-shadow: none; }
   .vw .lnk:hover { text-shadow: var(--glow); }
-  .vw #drawer { border-top-color: var(--line); }
-  .vw #drawer h4 { color: var(--violet); opacity: 1; }
-  .vw .up { color: var(--fg); background: var(--panel); border-color: var(--line); }
-  .vw .up:hover:not(:disabled) { border-color: #f0d040; box-shadow: none; background: var(--panel); }
-  .vw .up .n > span:first-child { color: var(--cyan); }
-  .vw .up .c { color: #f0d040; }
-  .vw #relics span { color: var(--peach); border-color: var(--line); }
   .vw .item.fresh { animation: tune-in .5s ease-out; }
   @keyframes tune-in { from { opacity: 0; transform: translateY(4px); background: rgba(79, 240, 255, .08); } }
   @media (prefers-reduced-motion: reduce) { .vw .item.fresh { animation: none; } }
@@ -245,15 +230,14 @@
 </div>
 <footer id="arcade">
   <div class="line" id="level"><span id="lv"><b>LV</b><span id="lvn">1</span></span><div id="xp"><i></i></div><span id="pct"></span></div>
-  <div id="strip"><canvas id="game" width="240" height="40" aria-hidden="true"></canvas><div id="gtoast" role="status" hidden></div></div>
+  <div id="strip"><canvas id="game" width="240" height="60" aria-hidden="true"></canvas><div id="gtoast" role="status" hidden></div></div>
   <div id="abar">
-    <span class="g">☠ <b id="gSouls">0</b></span>
-    <span class="g"><span id="gFloorL"></span> <b id="gFloor">1</b> <span id="gRoom"></span></span>
+    <span class="g"><span id="gCastleL"></span> <b id="gCastle">1</b></span>
+    <span class="g" id="gZone"></span>
+    <span class="g" id="gPct"></span>
     <span class="g" id="gFoe"></span>
-    <button class="lnk g" id="shopBtn" aria-expanded="false"></button>
     <button class="lnk" id="hideBtn"></button>
   </div>
-  <div id="drawer" hidden><h4 id="shopH"></h4><div id="shop"></div><h4 id="relH"></h4><div id="relics"></div></div>
 </footer>
 <script nonce="%NONCE%" src="%GAME%"></script>
 <script nonce="%NONCE%">
@@ -277,6 +261,13 @@
   }
   const open = (file, line) => vscode.postMessage({ type: 'open', file, line });
 
+  const FOLD = 12, SHOW = 8; // acima de FOLD linhas, mostra SHOW e recolhe o resto
+  function pre(lines, diff) {
+    const p = el('pre', diff ? 'body diff' : 'body');
+    if (!diff) { p.textContent = lines.join('\n'); return p; }
+    lines.forEach((l, i) => p.append(el('span', l.startsWith('+ ') ? 'add' : l.startsWith('- ') ? 'del' : '', l + (i < lines.length - 1 ? '\n' : ''))));
+    return p;
+  }
   function render(it) {
     const d = el('div', 'item ' + it.kind);
     d.dataset.project = it.project || '';
@@ -288,14 +279,15 @@
     head.append(title);
     d.append(head);
     if (it.sub) d.append(el('div', 'sub', it.sub));
-    const lines = it.body && it.kind === 'bash' ? it.body.split('\n') : [];
-    if (lines.length > 3) { // comando longo (heredoc): mostra a primeira linha, o resto abre no clique
-      const det = el('details', 'body');
-      const sum = el('summary', '', lines[0]);
-      sum.append(el('span', 'more', `+${lines.length - 1} ${UI.lines}`));
-      det.append(sum, el('pre', 'body', it.body));
-      d.append(det);
-    } else if (it.body) d.append(el(it.code ? 'pre' : 'div', 'body', it.body));
+    if (it.body) {
+      const lines = it.body.split('\n');
+      if ((it.kind === 'bash' || it.diff) && lines.length > FOLD) { // comando ou edição longa: as primeiras linhas aparecem, o resto abre no clique
+        d.append(pre(lines.slice(0, SHOW), it.diff));
+        const det = el('details', 'fold');
+        det.append(el('summary', '', `+${lines.length - SHOW} ${UI.lines}`), pre(lines.slice(SHOW), it.diff));
+        d.append(det);
+      } else d.append(it.code ? pre(lines, it.diff) : el('div', 'body', it.body));
+    }
     if (it.hits && it.hits.length) {
       const h = el('div', 'hits');
       for (const x of it.hits) {

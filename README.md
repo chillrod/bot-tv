@@ -40,7 +40,7 @@ Pair programming, except you're the one looking over the shoulder.
 
 </td>
 <td width="48%" valign="top">
-<img src="assets/panel.png" alt="The bot_tv panel: the TV robot and current step, project tabs with step counts, the agent's plan, a feed of searches, reads, commands and edits, and at the bottom the level, a thin XP bar and the arcade strip with the robot in a castle hall">
+<img src="assets/panel.png" alt="The bot_tv panel: the TV robot and current step, project tabs with step counts, the agent's plan, a feed of searches, reads, edits with their changed lines in red and green, commands and output, and at the bottom the level, a thin XP bar and the castle strip with a boss fight in the archive">
 </td>
 </tr>
 </table>
@@ -68,15 +68,17 @@ That installs the extension that ships inside the plugin (plugin commands carry 
 
 ## what's on
 
-**the editor follows** (while the TV panel is open). Reads open at the exact lines. Searches (`Grep`, `Glob`, and plain `grep` / `rg` / `sed` / `head` / `cat` in Bash, `cd` included) jump to the first hit and light up the rest. Edits open as a before → after diff with the new code selected. A tool that fails shows up as failed, never as a fake diff. Close the panel and the editor is yours again: steps only land in the feed.
+**the editor follows** (while the TV panel is open). Reads open at the exact lines. Searches (`Grep`, `Glob`, and plain `grep` / `rg` / `sed` / `head` / `cat` in Bash, `cd` included) jump to the first hit and light up the rest. Edits open as a before → after diff with the new code selected, and so do files a command changes (`sed -i`, a script, `cat > file`): bot_tv snapshots the files a command names before it runs and diffs them after. A tool that fails shows up as failed, never as a fake diff. Close the panel and the editor is yours again: steps only land in the feed.
 
-**the feed narrates.** Prompt, agent messages, the plan with the current item, commands and their output, subagents, failures, done. Steps are paced (700 ms by default) so it plays like a replay, not a strobe light.
+**the feed narrates.** Prompt, agent messages, the plan with the current item, commands and their output, every edit with the lines that changed (red out, green in), subagents, failures, done. Long commands and diffs show their first lines and fold the rest. Steps are paced (700 ms by default) so it plays like a replay, not a strobe light.
 
 **one tab per project.** Got Claude running in more than one folder? Each gets a tab the moment it starts working. `all` follows everything, a project tab follows only that one, and the rest blink a dot when something happens there. The editor only moves for the tab you're on.
 
 **the robot levels up.** MMO-style. Every second the agent spends working (prompt to done) is 1 XP, and levels follow the Tibia curve: lv 2 at 100 XP, lv 10 at 9,300, lv 50 at about 1.8M, each level asking more than the last. No cap. The badge and a thin bar sit at the bottom of the panel; hover for the XP numbers. Sessions left idle don't farm XP. Nice try.
 
-**the arcade.** A thin strip at the bottom of the panel runs an idle RPG: the robot goes down a castle on its own, floor by floor. The castle has no bottom: floors never run out, and every one is tougher and pays more souls. Each floor is six rooms, five random ones (fight, elite, chest, shrine, event) and a boss; `floor 3 2/6` means floor 3, room 2 of 6. The scenery cycles every five floors: ramparts, great hall, library, catacombs, clock tower. Monsters and bosses are generated on the spot, shape, colors and name. Claude's work pushes it along: a read is a hit, a search is three, an edit hits x4, a passing command heals, a failing one hurts, the end of a turn opens a chest with a relic. Relics last one run; souls go to the workshop for good. Each robot level is +5% damage. Not your thing? `hide game`.
+**the arcade.** A strip at the bottom of the panel plays a gothic castle climb on its own, nothing to click and nothing to grind. Every castle is generated on the spot and has a name: the robot starts at the ramparts and works its way up, area by area (great hall, archive, chapel, crypts, bell tower), through corridors, staircases, shafts it jumps up and lifts it rides, with a boss guarding each area. At the top of the throne spire waits the lord of the castle; beat it, *castle conquered*, and a new castle starts. It never ends. Area names show up as they're entered and a minimap fills in as the robot explores. Claude's work joins in: a read is a slash, a search is three, an edit is a heavy hit, a passing command heals, a failing one knocks the robot back. Monsters get tougher with every castle and with your level, and the robot can take a beating: it gets knocked down and gets back up, but it never dies, so the climb always goes on. Not your thing? `hide game`.
+
+<img src="assets/castle.png" alt="Six moments of a castle climb: the ramparts at night with a stairway up to the gate, a shaft between bookshelves in the archive, a boss fight with its name and health bar, the chapel with stained glass, the bell tower with gears and a lift, and the throne spire with red banners and a resting crystal; a minimap in each corner fills in as the robot climbs">
 
 **the weather.** Set `"botTv.weatherCity": "São Paulo"` (or your city) and the game's sky follows the real weather from [Open-Meteo](https://open-meteo.com), no key needed. When Claude sits idle for two minutes, the TV switches to an 80s-style local forecast channel; any step (or a click) switches it back. Left empty, it's off and the sky changes on its own.
 
@@ -115,8 +117,8 @@ npm run package   # build bot-tv.vsix
 
 - one VS Code window owns the port at a time; a second one says "port in use"
 - tabs are per folder, so two sessions in the same folder share one
-- XP and the game save live in VS Code's storage on your machine. New machine, new robot
-- the game pauses while the panel is out of sight. With VS Code closed the robot keeps exploring: up to 8 h of souls are waiting when it opens again
+- XP and the game's place in the castle live in VS Code's storage on your machine. New machine, new robot
+- the game pauses while the panel is out of sight and picks up where it stopped
 - the agent's private reasoning never shows up, only what it writes. Claude Code doesn't hand it over
 - the plugin rides the hooks-module API (Claude Code 2.1.275+), still early access
 - English and Portuguese only. Another language is one block in `extension/src/i18n.ts`

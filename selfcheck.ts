@@ -35,6 +35,13 @@ assert.deepStrictEqual(readTarget('tail -3 lib/api.ts', cwd), { file: api, start
 assert.deepStrictEqual(readTarget('cat lib/api.ts', cwd), { file: api });
 assert.strictEqual(readTarget('grep -rn x lib | head -5', cwd), null, 'head in a pipe is not a file read');
 
+// commands that touch files: the files they name get a before/after check
+const { commandFiles } = require('./extension/out/parse.js');
+assert.deepStrictEqual(commandFiles(`sed -i 's/a/b/' lib/api.ts`, cwd), [api], 'sed -i on a file');
+assert.deepStrictEqual(commandFiles("python - <<'EOF'\np='lib/api.ts'; s=open(p).read()\nEOF", cwd), [api], 'file named inside a heredoc');
+assert.ok(commandFiles('cat > lib/new.md <<EOF\nhi\nEOF', cwd)[0].endsWith('new.md'), 'a file the command creates');
+assert.deepStrictEqual(commandFiles('npm test -- --run auth && curl https://x.dev/a.json', cwd), [], 'flags and urls are not files');
+
 fs.rmSync(root, { recursive: true });
 
 // ---- level: Tibia curve, xp = 50/3·(L³ − 6L² + 17L − 12), 1 xp per second, no cap ----
@@ -62,6 +69,13 @@ assert.strictEqual(fmtDuration(42), '42s');
 assert.strictEqual(fmtDuration(17 * 60), '17min');
 assert.strictEqual(fmtDuration(3 * 3600 + 5 * 60), '3h05');
 // i18n key parity is enforced by the compiler (pt is typed as the en shape).
+
+// ---- edits: the feed shows only the lines that changed ----
+const { editLines } = require('./extension/out/parse.js');
+assert.deepStrictEqual(editLines('Edit', { old_string: 'a\nb\nc', new_string: 'a\nB\nc' }), ['- b', '+ B'], 'same lines around the change are dropped');
+assert.deepStrictEqual(editLines('Write', { content: 'x\ny' }), ['+ x', '+ y']);
+assert.deepStrictEqual(editLines('MultiEdit', { edits: [{ old_string: 'p', new_string: 'q' }, { old_string: 'r', new_string: '' }] }), ['- p', '+ q', '…', '- r']);
+assert.deepStrictEqual(editLines('Edit', { old_string: 'same', new_string: 'same' }), [], 'no change, nothing to show');
 
 // ---- weather: WMO codes from Open-Meteo map to the game's five skies ----
 const { wxKind } = require('./extension/out/weather.js');

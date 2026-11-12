@@ -91,3 +91,38 @@ export function findHits(text: string, cwd: string, sole: string | null): Hit[] 
   }
   return hits;
 }
+
+// O que uma edição mudou, para o feed: linhas "- " saíram, "+ " entraram. Linhas iguais no começo e no fim de cada troca
+// ficam de fora, para sobrar só o que mudou. Write mostra o arquivo novo todo como "+".
+export function editLines(tool: string, input: Record<string, any>): string[] {
+  const pairs: [string, string][] = tool === 'Write' ? [['', String(input.content ?? '')]]
+    : tool === 'MultiEdit' ? (input.edits || []).map((e: any) => [String(e.old_string ?? ''), String(e.new_string ?? '')])
+    : [[String(input.old_string ?? ''), String(input.new_string ?? '')]];
+  const out: string[] = [];
+  for (const [before, after] of pairs) {
+    const a = before ? before.split(/\r?\n/) : [], b = after ? after.split(/\r?\n/) : [];
+    while (a.length && b.length && a[0] === b[0]) { a.shift(); b.shift(); }
+    while (a.length && b.length && a[a.length - 1] === b[b.length - 1]) { a.pop(); b.pop(); }
+    if (!a.length && !b.length) continue;
+    if (out.length) out.push('…');
+    out.push(...a.map((l) => `- ${l}`), ...b.map((l) => `+ ${l}`));
+  }
+  return out;
+}
+
+// Arquivos que um comando cita (sed -i, scripts, `> arquivo`, nomes dentro de heredoc): candidatos a mudar.
+// O bot_tv fotografa esses antes do comando e compara depois, já que o Bash mexe em arquivo sem passar por Edit.
+// shortcut: só pega nomes com extensão (a.ts, notas.md); arquivo sem extensão alterado por comando não aparece
+const TEXT_EXT = /\.(md|txt|json|jsonc|js|mjs|cjs|ts|tsx|jsx|py|rb|go|rs|java|kt|c|h|cc|cpp|cs|css|scss|html|vue|svelte|php|swift|lua|sh|ps1|sql|xml|yml|yaml|toml|ini|cfg|env|csv)$/i;
+export function commandFiles(command: string, cwd: string, max = 20): string[] {
+  const out = new Set<string>();
+  for (const tok of command.split(/[\s'"`=;|&<>(),{}\[\]]+/)) {
+    // nome antes do ponto (".read" de open(p).read() não é arquivo), nada de flag nem URL
+    if (!tok || tok.startsWith('-') || tok.includes('://') || tok.length > 300 || !/[^./\\]\.[A-Za-z0-9]{1,8}$/.test(tok)) continue;
+    const p = resolvePath(cwd, tok);
+    if (!p || p.includes(`${path.sep}node_modules${path.sep}`) || p.includes(`${path.sep}.git${path.sep}`)) continue;
+    if (isFile(p) || TEXT_EXT.test(tok)) out.add(p); // arquivo que existe, ou um de texto que o comando pode estar criando
+    if (out.size >= max) break;
+  }
+  return [...out];
+}

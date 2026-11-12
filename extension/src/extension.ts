@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { pick, Strings } from './i18n';
 import { levelOf, fmtDuration, isNewer } from './level';
-import { Hit, bashCwd, findHits, grepSoleFile, isFile, readTarget, resolvePath, responseText } from './parse';
+import { Hit, bashCwd, commandFiles, editLines, findHits, grepSoleFile, isFile, readTarget, resolvePath, responseText } from './parse';
 import { Forecast, forecast } from './weather';
 
 // O que o plugin manda: o formato dos hooks do Claude Code, mais os eventos próprios (AssistantText, Stop com reason).
@@ -35,6 +35,7 @@ interface FeedItem {
   sub?: string;
   body?: string;
   code?: boolean;
+  diff?: boolean; // body em linhas "- " e "+ " de uma edição
   file?: string | null;
   line?: number;
   hits?: (Hit & { rel: string })[];
@@ -56,8 +57,13 @@ const MAX_BODY = 50 * 1024 * 1024; // Write pode mandar arquivo grande; acima di
 const MAX_SNAPSHOTS = 100;
 const MAX_FEED = 400;     // itens guardados no feed (o webview corta no mesmo limite)
 const OUTPUT_LINES = 30;  // linhas de saída de comando mostradas no feed
+const DIFF_LINES = 60;    // linhas de uma edição mostradas no feed (o resto é só a contagem)
 
 const before = new Map<string, string>(); // id do tool_use -> conteúdo do arquivo antes da edição
+// Bash também muda arquivo (sed -i, scripts, `> arquivo`): antes do comando, foto dos arquivos que ele cita (null = não existia).
+const bashBefore = new Map<string, Map<string, string | null>>();
+const MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024; // arquivo maior que isso não entra na foto
+const MAX_BASH_DIFFS = 3;                   // diffs abertos por comando
 const queue: Job[] = [];
 const feed: FeedItem[] = [];
 let paused = false, busy = false, state = '', nextId = 1;
@@ -310,12 +316,42 @@ function handle(req: http.IncomingMessage, res: http.ServerResponse): void {
     try { ev = JSON.parse(body); } catch { return reply(400, { error: 'json inválido' }); }
     // A foto do "antes" tem que sair agora: o hook Pre segura o Claude até esta resposta.
     if (ev.hook_event_name === 'PreToolUse' && EDITS.has(ev.tool_name || '')) snapshot(ev);
+    if (ev.hook_event_name === 'PreToolUse' && ev.tool_name === 'Bash') snapshotBash(ev);
     checkPlugin(ev.plugin_version);
     trackXp(ev); // na chegada, não na fila: o tempo é o da IA, não o do replay
     queue.push({ ev, project: projectOf(ev) });
     reply(200, { ok: true });
     drain();
   });
+}
+
+// Texto do arquivo, ou null se não existe, é grande demais ou é binário (não vira diff).
+function readText(file: string): string | null {
+  try {
+    if (fs.statSync(file).size > MAX_SNAPSHOT_BYTES) return null;
+    const t = fs.readFileSync(file, 'utf8');
+    return t.includes('\u0000') ? null : t;
+  } catch { return null; }
+}
+
+function snapshotBash(ev: HookEvent): void {
+  const cmd = ev.tool_input?.command || '';
+  const files = commandFiles(cmd, bashCwd(ev.cwd, cmd));
+  if (!files.length) return;
+  bashBefore.set(keyOf(ev), new Map(files.map((f) => [f, readText(f)])));
+  while (bashBefore.size > MAX_SNAPSHOTS) bashBefore.delete(bashBefore.keys().next().value!);
+}
+
+// Arquivos citados pelo comando que mudaram (ou nasceram) enquanto ele rodava.
+function bashChanges(ev: HookEvent): [string, string][] {
+  const snap = bashBefore.get(keyOf(ev));
+  bashBefore.delete(keyOf(ev));
+  const out: [string, string][] = [];
+  for (const [file, was] of snap || []) {
+    const now = readText(file);
+    if (now !== null && now !== was) out.push([file, was ?? '']);
+  }
+  return out.slice(0, MAX_BASH_DIFFS);
 }
 
 function snapshot(ev: HookEvent): void {
@@ -424,7 +460,9 @@ async function after(ev: HookEvent, t: string, i: Record<string, any>): Promise<
   if (hits.length || outBody) {
     addFeed({ kind: hits.length ? 'hits' : 'output', title: hits.length ? s.results(hits.length) : s.output, body: hits.length ? '' : outBody, code: true, hits: hits.map((h) => ({ ...h, rel: rel(h.file) })) });
   }
-  return hits.length ? revealHits(hits) : false;
+  let shown = false;
+  if (t === 'Bash') for (const [n, [file, was]] of bashChanges(ev).entries()) shown = (await diffFrom(`${keyOf(ev)}-${n}`, file, was)) || shown;
+  return shown || (hits.length ? revealHits(hits) : false);
 }
 
 // ---------- editor ----------
@@ -473,9 +511,33 @@ async function diff(ev: HookEvent, file: string): Promise<boolean> {
   }
   const s = T();
   setState(s.edited(rel(file)));
-  addFeed({ kind: 'edit', title: rel(file), sub: ev.tool_name === 'Write' ? s.fileWritten : '', file, line: selection ? selection.start.line + 1 : 1 });
+  const changed = editLines(ev.tool_name || '', i);
+  const body = changed.slice(0, DIFF_LINES).join('\n') + (changed.length > DIFF_LINES ? `\n${s.moreLines(changed.length - DIFF_LINES)}` : '');
+  const line = selection ? selection.start.line + 1 : 1;
+  addFeed({ kind: 'edit', title: rel(file), sub: [ev.tool_name === 'Write' ? s.fileWritten : '', selection ? s.lines(line, selection.end.line + 1) : ''].filter(Boolean).join(' · '), file, line, body, code: true, diff: true });
   if (!steer()) return false;
   await vscode.commands.executeCommand('vscode.diff', left, right, s.diffTitle(path.basename(file)), { preview: true, preserveFocus: true, selection });
+  return true;
+}
+
+// Arquivo que um comando mudou: o mesmo diff de uma edição, com o "antes" fotografado no Pre do comando.
+async function diffFrom(key: string, file: string, was: string): Promise<boolean> {
+  const now = readText(file);
+  if (now === null) return false;
+  before.set(key, was);
+  const a = was.split(/\r?\n/), b = now.split(/\r?\n/);
+  let k = 0;
+  while (k < a.length && k < b.length && a[k] === b[k]) k++;
+  const changed = editLines('Edit', { old_string: was, new_string: now });
+  const added = changed.filter((l) => l.startsWith('+ ')).length;
+  const s = T();
+  setState(s.edited(rel(file)));
+  addFeed({ kind: 'edit', title: rel(file), sub: [s.byCommand, s.lines(k + 1, k + Math.max(1, added))].join(' · '), file, line: k + 1,
+    body: changed.slice(0, DIFF_LINES).join('\n') + (changed.length > DIFF_LINES ? `\n${s.moreLines(changed.length - DIFF_LINES)}` : ''), code: true, diff: true });
+  if (!steer()) return false;
+  const right = vscode.Uri.file(file);
+  const selection = new vscode.Range(k, 0, k + Math.max(0, added - 1), 0);
+  await vscode.commands.executeCommand('vscode.diff', right.with({ scheme: 'bottv-before', query: key }), right, s.diffTitle(path.basename(file)), { preview: true, preserveFocus: true, selection });
   return true;
 }
 
