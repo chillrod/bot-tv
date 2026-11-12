@@ -18,12 +18,6 @@
   #lv { flex: none; display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 7px; border: 1px solid currentColor; border-radius: 4px; line-height: 1.25; }
   #lv b { font-size: .62em; letter-spacing: .1em; opacity: .75; }
   #lvn { font-weight: 700; font-variant-numeric: tabular-nums; }
-  #tabs { display: flex; gap: 2px; padding: 0 6px; overflow-x: auto; scrollbar-width: none; }
-  #tabs[hidden] { display: none; }
-  .tab { font: inherit; font-size: .85em; white-space: nowrap; color: var(--vscode-descriptionForeground); background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 4px 8px; cursor: pointer; }
-  .tab:hover { color: var(--vscode-foreground); background: transparent; }
-  .tab.on { color: var(--vscode-foreground); border-bottom-color: var(--vscode-focusBorder); }
-  .tab .dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--vscode-focusBorder); vertical-align: middle; }
   #xp { position: relative; flex: 1; min-width: 40px; height: 3px; border-radius: 0; background: var(--vscode-panel-border); overflow: hidden; }
   #xp i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: var(--vscode-focusBorder); overflow: hidden; transition: width .6s ease-out; }
   #xp i::after { /* reflexo que passa quando ganha XP */
@@ -70,8 +64,25 @@
   .hits a { display: block; font-family: var(--vscode-editor-font-family); font-size: .9em; }
   #empty { padding: 12px 10px; opacity: .65; }
   #state.fail { color: var(--vscode-errorForeground); }
+  /* botão de sessão e a lista que ele abre */
+  #sess { position: relative; flex: none; display: inline-flex; gap: 5px; align-items: center; font-family: var(--vscode-editor-font-family), monospace; }
+  #sess[hidden] { display: none; }
+  #sessDot { position: absolute; top: -4px; right: -4px; width: 7px; height: 7px; border-radius: 50%; background: var(--vscode-charts-green, #3fb950); }
+  #sessDot[hidden] { display: none; }
+  #sessMenu { position: absolute; right: 8px; top: calc(100% - 10px); z-index: 5; width: min(330px, calc(100vw - 16px)); padding: 6px; border-radius: 6px; border: 1px solid var(--vscode-focusBorder); background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background)); box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
+  #sessMenu[hidden] { display: none; }
+  #sessMenu h4 { margin: 2px 6px 6px; font-size: .75em; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+  #sessList .opt { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 2px 8px; width: 100%; padding: 7px 6px; text-align: left; border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
+  #sessList .opt:hover { background: var(--vscode-list-hoverBackground); }
+  #sessList .opt.on { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+  #sessList .opt .dot { width: 7px; height: 7px; margin-top: 6px; border-radius: 50%; }
+  #sessList .opt.live .dot { background: var(--vscode-charts-green, #3fb950); }
+  #sessList .opt.on .dot { background: var(--vscode-focusBorder); }
+  #sessList .opt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  #sessList .opt .when { font-size: .85em; opacity: .6; white-space: nowrap; }
+  #sessList .opt small { grid-column: 2 / 4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .7; }
+  #sessList .opt.all { margin-top: 4px; border-top: 1px solid var(--vscode-panel-border); border-radius: 0 0 4px 4px; padding-top: 9px; }
   .item.fail { border-left: 3px solid var(--vscode-errorForeground); }
-  .tab .n { margin-left: 5px; font-size: .9em; opacity: .6; }
   details.fold summary { margin-top: 4px; cursor: pointer; list-style: none; font-size: .85em; opacity: .8; }
   details.fold summary::-webkit-details-marker { display: none; }
   details.fold summary::before { content: '▸ '; }
@@ -128,10 +139,6 @@
   .vw #lv { color: var(--mint); border-color: transparent; background: linear-gradient(var(--bg), var(--bg)) padding-box, linear-gradient(90deg, var(--pink), var(--cyan)) border-box; box-shadow: 0 0 10px rgba(255, 79, 216, .3); }
   .vw #lv b { color: var(--pink); opacity: 1; text-shadow: 0 0 6px rgba(255, 79, 216, .6); }
   .vw #lvn { text-shadow: var(--glow); }
-  .vw .tab { color: var(--dim); border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; }
-  .vw .tab:hover { color: var(--fg); background: transparent; box-shadow: none; }
-  .vw .tab.on { color: var(--cyan); text-shadow: var(--glow); border-bottom-color: var(--pink); }
-  .vw .tab .dot { background: var(--pink); box-shadow: 0 0 6px var(--pink); }
   .vw #toast { color: var(--bg); background: var(--mint); box-shadow: 0 0 14px rgba(124, 245, 200, .7); font-weight: 600; }
   .vw .proj { color: var(--violet); opacity: 1; }
   #toast[hidden] { display: none; }
@@ -172,14 +179,24 @@
   .vw { line-height: 1.5; }
   .vw .row { padding: 12px 10px 10px; }
   .vw header::after { content: ''; position: absolute; inset: auto 0 0 0; height: 1px; background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan)); box-shadow: 0 0 8px var(--pink), 0 0 16px rgba(79, 240, 255, .5); }
-  .vw #tabs { padding: 6px 6px 0; border-bottom: 1px solid var(--line); }
-  .vw .tab { padding: 4px 9px 7px; }
   .vw .item { padding: 9px 10px; }
   .vw .k { display: block; min-width: 0; margin: 0 0 2px; font-weight: 700; letter-spacing: .06em; }
   .vw .sub { margin-top: 1px; font-size: .85em; }
   .vw .body { margin-top: 6px; }
   .vw #arcade #lv { background: none; box-shadow: none; }
   .vw #pct { color: var(--dim); opacity: 1; }
+  .vw #sessDot, .vw #sessList .opt.live .dot { background: var(--mint); box-shadow: 0 0 6px var(--mint); }
+  .vw #sessMenu { background: var(--panel); border-color: var(--pink); box-shadow: 0 0 18px rgba(255, 79, 216, .35); }
+  .vw #sessMenu h4 { color: var(--violet); opacity: 1; }
+  .vw #sessList .opt { color: var(--fg); border: 0; box-shadow: none; }
+  .vw #sessList .opt:hover { background: rgba(255, 79, 216, .1); box-shadow: none; }
+  .vw #sessList .opt.on { background: rgba(79, 240, 255, .08); color: var(--fg); }
+  .vw #sessList .opt.on .dot { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+  .vw #sessList .opt b { color: var(--cyan); }
+  .vw #sessList .opt small, .vw #sessList .opt .when { color: var(--dim); opacity: 1; }
+  .vw #sessList .opt.all { border-top-color: var(--line); }
+  .vw .folder .k { color: var(--violet); }
+  .vw #state.folder { color: var(--violet); }
   .vw #state.edit, .vw #state.prompt { color: var(--pink); }
   .vw #state.search, .vw #state.hits, .vw #state.stop { color: var(--mint); }
   .vw #state.bash, .vw #state.wait { color: var(--peach); }
@@ -189,7 +206,6 @@
   .vw details.fold summary { color: var(--cyan); opacity: 1; }
   .vw .diff .add { color: var(--mint); background: rgba(124, 245, 200, .06); }
   .vw .diff .del { color: var(--red); background: rgba(255, 92, 122, .06); }
-  .vw .tab .n { color: var(--dim); text-shadow: none; opacity: 1; }
   .vw #arcade { background: var(--bg); border-top-color: var(--line); }
   .vw #abar { color: var(--dim); }
   .vw #abar b { color: #f0d040; }
@@ -211,10 +227,11 @@
       <text id="face" x="64" y="79" text-anchor="middle">T_T</text>
     </svg>
     <span id="state"></span>
+    <button id="sess" aria-haspopup="true" aria-expanded="false" hidden><span>&gt;_</span><span id="sessN"></span><i id="sessDot" hidden></i></button>
     <button id="pause"></button>
   </div>
+  <div id="sessMenu" hidden><h4 id="sessTitle"></h4><div id="sessList"></div></div>
   <div id="upd-row"><button id="upd" hidden></button></div>
-  <nav id="tabs" hidden></nav>
   <div id="toast" role="status" hidden></div>
 </header>
 <div id="todos" hidden></div>
@@ -249,7 +266,7 @@
   const unread = new Set(); // projetos com passo novo que a aba seguida não mostrou
   const LEVELUP_MS = 2600;  // quanto o aviso e a cara de comemoração ficam na tela
   // A cara do mascote acompanha o último passo.
-  const FACE = { prompt: '•_•', text: '•‿•', thinking: '-_-', read: 'o_o', search: 'O_O', hits: '^o^', bash: '>_>', output: 'o_o', edit: '>_<', plan: '•_•', agent: '◉_◉', web: 'O_O', wait: '?_?', fail: 'T_T', stop: '^_^', tool: 'o_o' };
+  const FACE = { folder: 'o_o', prompt: '•_•', text: '•‿•', thinking: '-_-', read: 'o_o', search: 'O_O', hits: '^o^', bash: '>_>', output: 'o_o', edit: '>_<', plan: '•_•', agent: '◉_◉', web: 'O_O', wait: '?_?', fail: 'T_T', stop: '^_^', tool: 'o_o' };
   const $ = (id) => document.getElementById(id);
   const feedEl = $('feed'), todosEl = $('todos');
 
@@ -314,8 +331,8 @@
     if (fresh) { // passo ao vivo (não o replay do init): empurra o jogo e tira a TV do canal de previsão
       game.event(it.kind);
       lastFresh = Date.now(); wsDismissed = false; showWs(false);
-      if (d.hidden) unread.add(it.project);
-      renderTabs(); // contagem das abas
+      lastAt[it.project] = Date.now();
+      if (d.hidden && !unread.has(it.project)) { unread.add(it.project); renderSessions(); } // ponto na sessão que trabalhou fora da vista
     }
     if (d.hidden) return;
     $('state').className = it.kind;
@@ -323,30 +340,48 @@
     if (!celebrating) $('face').textContent = FACE[it.kind] || 'o_o';
   }
 
-  // ---------- abas ----------
-  function renderTabs() {
-    const nav = $('tabs');
-    nav.textContent = '';
-    nav.hidden = projects.length === 0;
+  // ---------- sessões: o botão >_ ao lado do Pausar escolhe qual sessão do Claude Code o painel segue ----------
+  const lastAt = {}; // sessão -> hora do último passo visto
+  function ago(ts) {
+    const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    return s < 60 ? UI.now : s < 3600 ? `${Math.floor(s / 60)} ${UI.minAgo}` : `${Math.floor(s / 3600)} ${UI.hAgo}`;
+  }
+  function renderSessions() {
+    const btn = $('sess');
+    btn.hidden = projects.length === 0;
+    btn.title = UI.sessionTip || '';
+    $('sessN').textContent = projects.length;
+    $('sessDot').hidden = !unread.size;
     document.body.classList.toggle('multi', projects.length > 1);
     document.body.classList.toggle('flow', following === 'flow');
-    const count = { flow: feedEl.children.length };
-    for (const d of feedEl.children) count[d.dataset.project] = (count[d.dataset.project] || 0) + 1;
-    for (const p of [{ key: 'flow', name: UI.flow, tip: UI.flowTip }, ...projects]) {
-      const b = el('button', 'tab' + (following === p.key ? ' on' : ''), p.name);
-      b.append(el('span', 'n', String(count[p.key] || 0)));
-      b.title = p.tip || p.key;
-      if (p.key !== 'flow' && unread.has(p.key)) b.append(el('span', 'dot'));
-      b.onclick = () => vscode.postMessage({ type: 'follow', project: p.key });
-      nav.append(b);
+    if ($('sessMenu').hidden) return;
+    $('sessTitle').textContent = UI.sessions || '';
+    const list = $('sessList');
+    list.textContent = '';
+    const opts = [...projects].sort((a, b) => (lastAt[b.key] || b.last) - (lastAt[a.key] || a.last))
+      .map((p) => ({ key: p.key, name: p.name, sub: p.prompt || UI.noPrompt, when: ago(lastAt[p.key] || p.last) }));
+    for (const o of [...opts, { key: 'flow', name: UI.flow, sub: UI.flowTip, when: '' }]) {
+      const b = el('button', 'opt' + (following === o.key ? ' on' : '') + (unread.has(o.key) ? ' live' : '') + (o.key === 'flow' ? ' all' : ''));
+      b.append(el('i', 'dot'), el('b', '', o.name), el('span', 'when', o.when), el('small', '', o.sub));
+      b.onclick = () => { showMenu(false); vscode.postMessage({ type: 'follow', project: o.key }); };
+      list.append(b);
     }
   }
+  function showMenu(on) {
+    $('sessMenu').hidden = !on;
+    $('sess').setAttribute('aria-expanded', String(on));
+    renderSessions();
+  }
+  $('sess').onclick = (e) => { e.stopPropagation(); showMenu($('sessMenu').hidden); };
+  addEventListener('click', (e) => { if (!$('sessMenu').hidden && !$('sessMenu').contains(e.target)) showMenu(false); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sessMenu').hidden) showMenu(false); });
+  setInterval(() => { if (!$('sessMenu').hidden) renderSessions(); }, 30_000); // "há 2 min" anda sozinho
   function setFollowing(f) {
     following = f;
     unread.delete(f);
     if (f === 'flow') unread.clear();
     for (const d of feedEl.children) d.hidden = !shows(d.dataset.project);
-    renderTabs();
+    renderSessions();
     scrollTo(0, document.body.scrollHeight);
   }
 
@@ -394,7 +429,7 @@
     UI = ui;
     $('empty').textContent = ui.empty;
     setPaused(isPaused);
-    renderTabs();
+    renderSessions();
     game.lang(ui.lang);
     if (!$('ws').hidden) renderWs();
   }
@@ -462,15 +497,15 @@
 
   addEventListener('message', ({ data: m }) => {
     if (m.type === 'ui') setUi(m.ui);
-    if (m.type === 'projects') { projects = m.projects; renderTabs(); }
+    if (m.type === 'projects') { projects = m.projects; for (const x of projects) lastAt[x.key] ??= x.last; renderSessions(); }
     if (m.type === 'following') setFollowing(m.following);
     if (m.type === 'update') setUpdate(m.update);
     if (m.type === 'xp') setXp(m.xp);
     if (m.type === 'levelup') levelUp(m.level);
     if (m.type === 'init') {
       game.start(m.game, m.ui.lang);
-      following = m.following; projects = m.projects; setXp(m.xp); setUpdate(m.update); setSkin(m.skin); setUi(m.ui);
-      feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); renderTabs();
+      following = m.following; projects = m.projects; for (const x of projects) lastAt[x.key] = x.last; setXp(m.xp); setUpdate(m.update); setSkin(m.skin); setUi(m.ui);
+      feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); renderSessions();
       showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; setWeather(m.weather); layout();
     }
     if (m.type === 'weather') setWeather(m.weather);

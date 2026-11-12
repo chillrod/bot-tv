@@ -1,5 +1,6 @@
 // Lê comandos e saídas das ferramentas e transforma em arquivos e linhas. Sem VS Code: testável com Node puro.
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 const MAX_HITS = 200;  // resultados de busca listados por passo
@@ -8,9 +9,10 @@ const MAX_SCAN = 3000; // linhas de saída examinadas atrás de arquivo:linha
 export interface Hit { file: string; line: number }
 export interface ReadTarget { file: string; start?: number; count?: number }
 
-// Aceita caminhos do Git Bash (/c/Users/...) além dos do Windows.
+// Aceita caminhos do Git Bash (/c/Users/...) além dos do Windows, e a pasta do usuário escrita como ~, $HOME, $env:USERPROFILE ou %USERPROFILE%.
 export function resolvePath(cwd: string | undefined, p: string | undefined): string | null {
   if (!p) return null;
+  p = p.replace(/^(?:~|\$HOME|\$\{HOME\}|\$env:USERPROFILE|%USERPROFILE%)(?=$|[\\/])/i, () => os.homedir());
   const m = /^\/([a-zA-Z])(\/.*)?$/.exec(p);
   if (m && process.platform === 'win32') p = `${m[1].toUpperCase()}:${m[2] || '/'}`; // maiúscula: mesmo arquivo, mesma chave
   return path.resolve(cwd || '', p);
@@ -20,10 +22,14 @@ export function isFile(p: string | null | undefined): p is string {
   try { return !!p && fs.statSync(p).isFile(); } catch { return false; }
 }
 
+export function isDir(p: string | null | undefined): p is string {
+  try { return !!p && fs.statSync(p).isDirectory(); } catch { return false; }
+}
+
 // shortcut: segue os `cd` do comando em sequência, sem entender subshell nem `cd` depois do comando que importa
 export function bashCwd(cwd: string | undefined, command: string | undefined): string {
   let dir = cwd || '';
-  const re = /(?:^|&&|;|\|\|)\s*cd\s+(?:"([^"]*)"|'([^']*)'|([^\s;&|]+))/g;
+  const re = /(?:^|&&|;|\|\|)\s*(?:cd|Set-Location|sl|pushd)\s+(?:"([^"]*)"|'([^']*)'|([^\s;&|]+))/g;
   for (const m of (command || '').matchAll(re)) dir = resolvePath(dir, m[1] ?? m[2] ?? m[3]) ?? dir;
   return dir;
 }
@@ -35,10 +41,10 @@ function segments(command: string): string[][] {
 // Comando de leitura (sed -n A,Bp / head / tail / cat) num arquivo existente -> trecho a mostrar.
 export function readTarget(command: string, cwd: string): ReadTarget | null {
   for (const [cmd, ...args] of segments(command)) {
-    if (!['sed', 'head', 'tail', 'cat'].includes(cmd)) continue;
+    if (!['sed', 'head', 'tail', 'cat', 'Get-Content', 'gc', 'type'].includes(cmd)) continue;
     const file = args.filter((a) => !a.startsWith('-')).map((a) => resolvePath(cwd, a)).find(isFile);
     if (!file) continue;
-    if (cmd === 'cat') return { file };
+    if (cmd === 'cat' || cmd === 'Get-Content' || cmd === 'gc' || cmd === 'type') return { file };
     if (cmd === 'sed') {
       const r = args.map((a) => /^(\d+)(?:,(\d+))?p$/.exec(a)).find(Boolean);
       return r ? { file, start: +r[1], count: (r[2] ? +r[2] : +r[1]) - +r[1] + 1 } : { file };
@@ -125,4 +131,18 @@ export function commandFiles(command: string, cwd: string, max = 20): string[] {
     if (out.size >= max) break;
   }
   return [...out];
+}
+
+// Comando que olha uma pasta (ls, dir, tree, find, Get-ChildItem) ou só entra nela (cd) -> a pasta a mostrar.
+const LISTERS = ['ls', 'll', 'dir', 'tree', 'find', 'fd', 'eza', 'exa', 'Get-ChildItem', 'gci'];
+export function listTarget(command: string, startCwd: string): string | null {
+  const cwd = bashCwd(startCwd, command), segs = segments(command).filter((s) => s.length);
+  for (const [cmd, ...args] of segs) {
+    if (!LISTERS.includes(cmd)) continue;
+    const arg = args.find((a) => !a.startsWith('-') && !/[*?]/.test(a) && !/^\d+$/.test(a));
+    const dir = resolvePath(cwd, arg || '.');
+    return isDir(dir) ? dir : null; // ls num arquivo não é navegação
+  }
+  const moves = segs.every(([c]) => ['cd', 'Set-Location', 'sl', 'pushd', 'pwd'].includes(c));
+  return segs.length && moves && isDir(cwd) && path.resolve(cwd) !== path.resolve(startCwd) ? cwd : null;
 }

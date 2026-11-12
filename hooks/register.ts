@@ -5,7 +5,7 @@ import type { EngineInterface, Register } from 'claude-code'
 const EVENT_URL = 'http://127.0.0.1:7337/event'
 
 // Mesma versão do .claude-plugin/plugin.json (o selfcheck confere). A extensão compara com a dela e avisa se ficou para trás.
-const PLUGIN_VERSION = '0.8.0'
+const PLUGIN_VERSION = '0.9.0'
 
 let sessionId: string | undefined
 

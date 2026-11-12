@@ -42,6 +42,20 @@ assert.deepStrictEqual(commandFiles("python - <<'EOF'\np='lib/api.ts'; s=open(p)
 assert.ok(commandFiles('cat > lib/new.md <<EOF\nhi\nEOF', cwd)[0].endsWith('new.md'), 'a file the command creates');
 assert.deepStrictEqual(commandFiles('npm test -- --run auth && curl https://x.dev/a.json', cwd), [], 'flags and urls are not files');
 
+// navigating folders: the folder a listing (or a lone cd) looks at
+const { listTarget } = require('./extension/out/parse.js');
+const src = path.join(root, 'src'), lib = path.join(root, 'src', 'lib');
+assert.strictEqual(listTarget('ls -la lib', src), lib, 'ls a folder');
+assert.strictEqual(listTarget(`cd "${shellPath(root)}/src" && ls`, os.tmpdir()), src, 'cd then ls');
+assert.strictEqual(listTarget('find . -name "*.ts"', src), src, 'find from here');
+assert.strictEqual(listTarget('Get-ChildItem -Path lib -Recurse', src), lib, 'PowerShell listing');
+assert.strictEqual(listTarget('cd lib', src), lib, 'a lone cd shows where it landed');
+assert.strictEqual(listTarget('ls lib/api.ts', src), null, 'ls on a file is not browsing');
+assert.strictEqual(listTarget('npm test', src), null);
+assert.strictEqual(listTarget('ls ~', src), os.homedir(), 'the home folder, written as ~');
+assert.strictEqual(listTarget('Get-ChildItem $env:USERPROFILE', src), os.homedir(), 'the home folder, PowerShell style');
+assert.deepStrictEqual(readTarget('Get-Content lib/api.ts', cwd), { file: api }, 'Get-Content reads like cat');
+
 fs.rmSync(root, { recursive: true });
 
 // ---- level: Tibia curve, xp = 50/3·(L³ − 6L² + 17L − 12), 1 xp per second, no cap ----

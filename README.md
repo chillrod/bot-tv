@@ -37,7 +37,7 @@
 
 You ask Claude Code for something and it goes off: greps twelve files, reads half of them, runs a few commands, edits three things, says it's done. All you got was a wall of tool calls scrolling by in a terminal.
 
-**bot_tv turns that into a channel.** Keep VS Code open next to the terminal, open the TV in the activity bar, and the editor follows the agent around while the panel narrates. You see the exact lines it reads, what its searches found and every change the moment it lands.
+**bot_tv turns that into a channel.** Keep VS Code open next to the terminal, open the TV in the activity bar, and the editor follows the agent around while the panel narrates. You see the folders it looks through, the exact lines it reads, what its searches found and every change the moment it lands.
 
 Pair programming, except you're the one looking over the shoulder.
 
@@ -50,7 +50,8 @@ Every step Claude takes shows up twice: in the editor, where it happened, and in
 | **reads** a file | opens it at the exact lines, lit up in neon, with the robot in the gutter | `reading`, the file and the line range |
 | **searches** (`Grep`, `Glob`, `grep` / `rg` in Bash) | jumps to the first hit and lights up the rest of that file | the query, then every hit as a clickable `file:line` |
 | **edits** (`Edit`, `Write`, `MultiEdit`) | opens a before → after diff with the new code selected | the lines that changed: red out, green in |
-| **runs a command** | a read (`cat`, `sed -n`, `head`, `tail`) opens that slice; a change (`sed -i`, a script, `cat > file`) opens the file's diff | the command and its output; long ones fold after 8 lines |
+| **browses folders** (`ls`, `dir`, `tree`, `find`, `Get-ChildItem`, a lone `cd`, `Glob`) | opens the folder as a tree, even outside the project; `Glob` marks what matched with ●; every entry is clickable | the folder and how many folders and files it holds |
+| **runs a command** (Bash or PowerShell) | a read (`cat`, `sed -n`, `head`, `tail`, `Get-Content`) opens that slice; a change (`sed -i`, a script, `cat > file`) opens the file's diff | the command and its output; long ones fold after 8 lines |
 | **fails** | nothing moves, no fake diff | the failure, in red, with the error |
 | **plans** (`TodoWrite`) | | the checklist, current item glowing |
 | **talks** | | your prompt and what the agent says between steps |
@@ -82,7 +83,7 @@ Updating: `/plugin` updates the plugin, not the extension. When the plugin runs 
 
 ## the panel
 
-**one tab per project.** Claude running in more than one folder? Each gets a tab the moment it starts working, with a count of its steps. `all` follows everything, a project tab follows only that one, and the others blink a dot when something happens there. The editor only moves for the tab you're on.
+**one session at a time.** Got more than one Claude Code session open? The panel follows one: the first that shows up, until you pick another. The `>_` button next to Pause lists every session with its folder, the start of its first prompt and when it last did something; sessions working out of sight get a green dot. Pick one and the feed, the robot and the editor switch to it. `all sessions` is there too, if you ask for it. A session you follow that goes quiet for 10 minutes hands over to the next one that gets a prompt.
 
 **the robot levels up.** Every second the agent spends working, from prompt to done, is 1 XP. Levels follow the Tibia curve: lv 2 at 100 XP, lv 10 at 9,300, lv 50 at about 1.8M, each one asking more than the last, no cap. The level and a thin XP bar sit on top of the arcade; hover for the numbers. Sessions left idle don't farm XP. Nice try.
 
@@ -154,8 +155,8 @@ npm run package   # build bot-tv.vsix
 ## rough edges
 
 - one VS Code window owns the port at a time; a second one says "port in use"
-- tabs are per folder, so two sessions in the same folder share one
 - a command's changes show up only for files it names, with an extension (`a.ts`, `notes.md`)
+- a restarted Claude Code session is a new session; the panel follows it once you pick it (or once the old one goes quiet)
 - XP and the robot's place in the castle live in VS Code's storage on your machine. New machine, new robot
 - the arcade pauses while the panel is out of sight and picks up where it stopped
 - the agent's private reasoning never shows up, only what it writes. Claude Code doesn't hand it over

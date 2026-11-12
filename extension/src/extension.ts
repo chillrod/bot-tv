@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { pick, Strings } from './i18n';
 import { levelOf, fmtDuration, isNewer } from './level';
-import { Hit, bashCwd, commandFiles, editLines, findHits, grepSoleFile, isFile, readTarget, resolvePath, responseText } from './parse';
+import { Hit, bashCwd, commandFiles, editLines, findHits, grepSoleFile, isDir, isFile, listTarget, readTarget, resolvePath, responseText } from './parse';
 import { Forecast, forecast } from './weather';
 
 // O que o plugin manda: o formato dos hooks do Claude Code, mais os eventos próprios (AssistantText, Stop com reason).
@@ -74,11 +74,15 @@ let view: vscode.WebviewView | null = null;
 let version = '', pluginNewer = ''; // pluginNewer: versão do plugin, quando mais nova que esta extensão
 let extUri: vscode.Uri, store: vscode.Memento | undefined, wsState: vscode.Memento;
 
-// Abas: "flow" segue tudo; senão, só o projeto (cwd da sessão) escolhido mexe no editor e na legenda.
-const projects = new Map<string, string>(); // chave do projeto -> nome da pasta
-let following = 'flow';
-let cur = { project: '', name: '' }; // projeto do passo sendo mostrado
-let followed = true;                  // o passo sendo mostrado é da aba seguida
+// Sessões do Claude Code: o painel segue uma só (a escolhida no botão de sessão). "flow" segue todas, só se a pessoa pedir.
+// Sem escolha, prende na primeira que aparecer; se ela ficar parada STALE_MS e outra mandar um prompt, passa para a nova.
+interface Session { name: string; prompt: string; last: number }
+const sessions = new Map<string, Session>(); // session_id -> pasta, primeiro prompt, último passo
+const STALE_MS = 10 * 60_000;
+let following = '';
+let cur = { project: '', name: '' }; // sessão do passo sendo mostrado
+let followed = true;                  // o passo sendo mostrado é da sessão seguida
+const SHELLS = new Set(['Bash', 'PowerShell']); // ferramentas que rodam comando: as duas mostram leitura, pasta e arquivo alterado
 // O editor só é guiado com o painel da TV aberto e visível; fechado, os passos só entram no feed.
 const steer = () => followed && !!view?.visible;
 
@@ -118,7 +122,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   store = ctx.globalState;
   wsState = ctx.workspaceState;
   xpSeconds = store.get('botTv.xpSeconds', 0);
-  following = wsState.get('botTv.following', 'flow');
+  following = wsState.get<string>('botTv.following', '') === 'flow' ? 'flow' : ''; // id de sessão não sobrevive ao reinício; "todas" sim
   out = vscode.window.createOutputChannel('bot_tv');
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   status.command = 'botTv.toggle';
@@ -141,6 +145,11 @@ export function activate(ctx: vscode.ExtensionContext): void {
     vscode.workspace.registerTextDocumentContentProvider('bottv-before', {
       provideTextDocumentContent: (uri) => before.get(uri.query) ?? '',
     }),
+    vscode.workspace.registerTextDocumentContentProvider('bottv-folder', { onDidChange: folderChanged.event, provideTextDocumentContent: folderText }),
+    vscode.languages.registerDocumentLinkProvider({ scheme: 'bottv-folder' }, {
+      provideDocumentLinks: (doc) => (folderLinks.get(doc.uri.toString()) || []).map((l) => new vscode.DocumentLink(doc.lineAt(l.line).range, l.target)),
+    }),
+    folderChanged,
     vscode.commands.registerCommand('botTv.toggle', toggle),
     vscode.window.registerWebviewViewProvider('botTv.feed', { resolveWebviewView }, { webviewOptions: { retainContextWhenHidden: true } }),
   );
@@ -182,17 +191,16 @@ function resolveWebviewView(v: vscode.WebviewView): void {
   v.webview.onDidReceiveMessage((m: { type: string; project?: string; file?: string; line?: number; save?: unknown }) => {
     if (m.type === 'ready') {
       const game = store?.get('botTv.game') ?? null;
-      post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui, following, projects: projectList(), xp: xpInfo(), update: updateInfo(), game, weather });
+      post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui, following, projects: sessionList(), xp: xpInfo(), update: updateInfo(), game, weather });
     }
     if (m.type === 'game' && m.save && typeof m.save === 'object' && JSON.stringify(m.save).length < MAX_GAME_SAVE) store?.update('botTv.game', m.save);
     if (m.type === 'ackUpdate') store?.update('botTv.seenVersion', version);
     if (m.type === 'toggle') toggle();
-    if (m.type === 'follow' && m.project) {
-      following = m.project;
-      wsState.update('botTv.following', following);
-      post({ type: 'following', following });
+    if (m.type === 'follow' && m.project) follow(m.project);
+    if (m.type === 'open' && m.file) {
+      const go = isDir(m.file) ? showFolder(m.file, [], true) : reveal(m.file, m.line, 1, true);
+      go.catch((e: Error) => out.appendLine(`erro ao abrir: ${e.message}`));
     }
-    if (m.type === 'open' && m.file) reveal(m.file, m.line, 1).catch((e: Error) => out.appendLine(`erro ao abrir: ${e.message}`));
   });
   v.onDidDispose(() => { view = null; });
 }
@@ -220,20 +228,33 @@ function setState(text: string): void {
   post({ type: 'state', state });
 }
 
-// ---------- projetos e nível ----------
+// ---------- sessões e nível ----------
 
-function projectOf(ev: HookEvent): string {
-  if (!ev.cwd) return '';
-  const p = path.resolve(ev.cwd);
-  const key = process.platform === 'win32' ? p.toLowerCase() : p; // mesma pasta, mesma aba, com qualquer caixa
-  if (!projects.has(key)) {
-    projects.set(key, path.basename(p) || p);
-    post({ type: 'projects', projects: projectList() });
+function follow(key: string): void {
+  following = key;
+  wsState.update('botTv.following', key === 'flow' ? 'flow' : '');
+  post({ type: 'following', following });
+}
+
+function sessionOf(ev: HookEvent): string {
+  const key = ev.session_id || 'default', now = Date.now();
+  let ss = sessions.get(key), changed = false;
+  if (!ss) {
+    const dir = ev.cwd ? path.resolve(ev.cwd) : '';
+    ss = { name: path.basename(dir) || dir || 'Claude Code', prompt: '', last: now };
+    sessions.set(key, ss);
+    changed = true;
   }
+  if (ev.hook_event_name === 'UserPromptSubmit' && !ss.prompt && ev.prompt) { ss.prompt = ev.prompt.replace(/\s+/g, ' ').trim().slice(0, 80); changed = true; }
+  const lead = following && following !== 'flow' ? sessions.get(following) : undefined;
+  if (!following || (following !== 'flow' && !lead)) follow(key); // primeira sessão: o painel prende nela
+  else if (lead && key !== following && ev.hook_event_name === 'UserPromptSubmit' && now - lead.last > STALE_MS) follow(key); // a seguida largou: vai para a nova
+  ss.last = now;
+  if (changed) post({ type: 'projects', projects: sessionList() });
   return key;
 }
 
-const projectList = () => [...projects].map(([key, name]) => ({ key, name }));
+const sessionList = () => [...sessions].map(([key, x]) => ({ key, name: x.name, prompt: x.prompt, last: x.last }));
 
 function xpInfo() {
   const i = levelOf(xpSeconds);
@@ -298,7 +319,7 @@ function handle(req: http.IncomingMessage, res: http.ServerResponse): void {
     const tab = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
     return reply(200, {
       workspace: (vscode.workspace.workspaceFolders || []).map((f) => f.uri.fsPath),
-      paused, state, queued: queue.length, viewOpen: !!view, todos, following, projects: projectList(), xp: xpInfo(),
+      paused, state, queued: queue.length, viewOpen: !!view, todos, following, sessions: sessionList(), xp: xpInfo(),
       recent: feed.slice(-15).map((f) => `${f.kind}: ${f.title || ''}${f.hits ? ` [${f.hits.length} hits]` : ''}`),
       activeTab: tab instanceof vscode.TabInputTextDiff ? { diff: tab.original.toString(), modified: tab.modified.toString() }
         : tab instanceof vscode.TabInputText ? tab.uri.toString() : null,
@@ -316,10 +337,10 @@ function handle(req: http.IncomingMessage, res: http.ServerResponse): void {
     try { ev = JSON.parse(body); } catch { return reply(400, { error: 'json inválido' }); }
     // A foto do "antes" tem que sair agora: o hook Pre segura o Claude até esta resposta.
     if (ev.hook_event_name === 'PreToolUse' && EDITS.has(ev.tool_name || '')) snapshot(ev);
-    if (ev.hook_event_name === 'PreToolUse' && ev.tool_name === 'Bash') snapshotBash(ev);
+    if (ev.hook_event_name === 'PreToolUse' && SHELLS.has(ev.tool_name || '')) snapshotBash(ev);
     checkPlugin(ev.plugin_version);
     trackXp(ev); // na chegada, não na fila: o tempo é o da IA, não o do replay
-    queue.push({ ev, project: projectOf(ev) });
+    queue.push({ ev, project: sessionOf(ev) });
     reply(200, { ok: true });
     drain();
   });
@@ -370,7 +391,7 @@ async function drain(): Promise<void> {
     const job = queue.shift()!;
     let visual = false;
     agent = !!job.ev.agentId;
-    cur = { project: job.project, name: projects.get(job.project) || '' };
+    cur = { project: job.project, name: sessions.get(job.project)?.name || '' };
     followed = following === 'flow' || following === job.project;
     try { visual = await show(job.ev); } catch (e) { out.appendLine(`  erro ao mostrar: ${(e as Error).message}`); }
     followed = true;
@@ -417,12 +438,14 @@ async function pre(ev: HookEvent, t: string, i: Record<string, any>): Promise<bo
     return false;
   }
   if (t === 'Glob') { setState(s.listing(i.pattern)); addFeed({ kind: 'search', title: i.pattern, sub: s.files }); return false; }
-  if (t === 'Bash') {
+  if (SHELLS.has(t)) {
     const cwd = bashCwd(ev.cwd, i.command);
     const r = readTarget(i.command || '', cwd);
     setState(i.description || s.runningCommand);
     addFeed({ kind: 'bash', title: i.description || s.command, body: i.command, code: true, file: r?.file, line: r?.start || 1 });
-    return r ? reveal(r.file, r.start, r.count) : false;
+    if (r) return reveal(r.file, r.start, r.count);
+    const dir = listTarget(i.command || '', ev.cwd || '');
+    return dir ? folderStep(dir, []) : false;
   }
   if (t === 'TodoWrite') {
     todos = ((i.todos || []) as Todo[]).map((x) => ({ content: x.content, status: x.status }));
@@ -448,27 +471,90 @@ async function after(ev: HookEvent, t: string, i: Record<string, any>): Promise<
     return false;
   }
   if (EDITS.has(t) && file) return diff(ev, file);
-  if (t !== 'Bash' && t !== 'Grep' && t !== 'Glob') return false;
+  if (!SHELLS.has(t) && t !== 'Grep' && t !== 'Glob') return false;
+  const shell = SHELLS.has(t);
 
-  const cwd = t === 'Bash' ? bashCwd(ev.cwd, i.command) : ev.cwd || '';
+  const cwd = shell ? bashCwd(ev.cwd, i.command) : ev.cwd || '';
   const text = responseText(ev.tool_response) || ev.tool_text || ''; // tool_text: o resultado como o modelo leu, se o registro não tiver texto
-  const pathArg = t !== 'Bash' ? resolvePath(cwd, i.path) : null;
-  const sole = t === 'Bash' ? grepSoleFile(i.command || '', cwd) : isFile(pathArg) ? pathArg : null;
+  const pathArg = !shell ? resolvePath(cwd, i.path) : null;
+  const sole = shell ? grepSoleFile(i.command || '', cwd) : isFile(pathArg) ? pathArg : null;
   const hits = findHits(text, cwd, sole);
   const lines = text.split(/\r?\n/);
-  const outBody = t === 'Bash' && text.trim() ? lines.slice(0, OUTPUT_LINES).join('\n') + (lines.length > OUTPUT_LINES ? `\n${s.moreLines(lines.length - OUTPUT_LINES)}` : '') : '';
+  const outBody = shell && text.trim() ? lines.slice(0, OUTPUT_LINES).join('\n') + (lines.length > OUTPUT_LINES ? `\n${s.moreLines(lines.length - OUTPUT_LINES)}` : '') : '';
   if (hits.length || outBody) {
     addFeed({ kind: hits.length ? 'hits' : 'output', title: hits.length ? s.results(hits.length) : s.output, body: hits.length ? '' : outBody, code: true, hits: hits.map((h) => ({ ...h, rel: rel(h.file) })) });
   }
   let shown = false;
-  if (t === 'Bash') for (const [n, [file, was]] of bashChanges(ev).entries()) shown = (await diffFrom(`${keyOf(ev)}-${n}`, file, was)) || shown;
-  return shown || (hits.length ? revealHits(hits) : false);
+  if (shell) for (const [n, [file, was]] of bashChanges(ev).entries()) shown = (await diffFrom(`${keyOf(ev)}-${n}`, file, was)) || shown;
+  if (shown) return true;
+  if (t === 'Glob') { // a pasta da busca, com o que casou marcado, diz mais do que abrir o primeiro arquivo
+    const base = isDir(pathArg) ? pathArg : cwd;
+    return base ? showFolder(base, hits.map((h) => h.file)) : false;
+  }
+  return hits.length ? revealHits(hits) : false;
+}
+
+// ---------- pastas: o Claude navegando pelo disco vira uma árvore no editor ----------
+
+const FOLDER_MAX = 500; // entradas listadas por pasta
+const folderLinks = new Map<string, { line: number; target: vscode.Uri }[]>(); // documento -> linhas clicáveis
+const folderMarks = new Map<string, string[]>();                                // documento -> entradas marcadas (Glob)
+const folderChanged = new vscode.EventEmitter<vscode.Uri>();
+const folderUri = (dir: string) => vscode.Uri.from({ scheme: 'bottv-folder', path: `/📁 ${path.basename(dir) || dir}`, query: dir });
+
+function folderText(uri: vscode.Uri): string {
+  const dir = uri.query, s = T(), marks = new Set(folderMarks.get(uri.toString()) || []);
+  let list: fs.Dirent[] = [];
+  try { list = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return `📁 ${dir}\n\n${(e as Error).message}`; }
+  list.sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name));
+  const dirs = list.filter((d) => d.isDirectory()).length;
+  const links: { line: number; target: vscode.Uri }[] = [];
+  const lines = [`📁 ${dir}`, s.folderSummary(dirs, list.length - dirs), ''];
+  const parent = path.dirname(dir);
+  if (parent !== dir) { links.push({ line: lines.length, target: folderUri(parent) }); lines.push('   📁 ..'); }
+  for (const d of list.slice(0, FOLDER_MAX)) {
+    const full = path.join(dir, d.name), mark = marks.has(full) ? '● ' : '  ';
+    let size = '';
+    if (!d.isDirectory()) { try { size = fmtSize(fs.statSync(full).size); } catch { /* sem acesso */ } }
+    links.push({ line: lines.length, target: d.isDirectory() ? folderUri(full) : vscode.Uri.file(full) });
+    lines.push(`${mark} ${d.isDirectory() ? '📁' : '📄'} ${d.name}${d.isDirectory() ? '/' : ''}${size ? '  ' + size : ''}`);
+  }
+  if (list.length > FOLDER_MAX) lines.push(`   … +${list.length - FOLDER_MAX}`);
+  folderLinks.set(uri.toString(), links);
+  return lines.join('\n');
+}
+
+function fmtSize(n: number): string {
+  return n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 ** 2).toFixed(1)} MB`;
+}
+
+// Passo de navegação: entra no feed e abre a pasta no editor.
+async function folderStep(dir: string, marked: string[]): Promise<boolean> {
+  const s = T();
+  let dirs = 0, files = 0;
+  try { for (const d of fs.readdirSync(dir, { withFileTypes: true })) d.isDirectory() ? dirs++ : files++; } catch { /* sem acesso */ }
+  setState(s.browsing(rel(dir) || dir));
+  addFeed({ kind: 'folder', title: rel(dir) || dir, sub: s.folderSummary(dirs, files), file: dir });
+  return showFolder(dir, marked);
+}
+
+async function showFolder(dir: string, marked: string[], asked = false): Promise<boolean> {
+  if (!asked && !steer()) return false;
+  const uri = folderUri(dir);
+  // marca a entrada de primeiro nível que contém cada achado (arquivo ou a pasta dele)
+  folderMarks.set(uri.toString(), [...new Set(marked.map((f) => path.join(dir, path.relative(dir, f).split(path.sep)[0])))]);
+  folderChanged.fire(uri);
+  const doc = await vscode.workspace.openTextDocument(uri);
+  const ed = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
+  const ranges = (folderLinks.get(uri.toString()) || []).filter((l) => doc.lineAt(l.line).text.startsWith('●')).map((l) => new vscode.Range(l.line, 0, l.line, 0));
+  if (ranges.length) { ed.revealRange(ranges[0], vscode.TextEditorRevealType.InCenter); flash(ed, ranges, 2500); }
+  return true;
 }
 
 // ---------- editor ----------
 
-async function reveal(file: string, start?: number, count?: number): Promise<boolean> {
-  if (!steer()) return false; // outro projeto: só entra no feed, o editor fica com a aba seguida
+async function reveal(file: string, start?: number, count?: number, asked = false): Promise<boolean> {
+  if (!asked && !steer()) return false; // outro projeto: só entra no feed, o editor fica com a aba seguida
   const doc = await vscode.workspace.openTextDocument(file);
   const ed = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
   if (!start && !count) { // arquivo inteiro: só abre no topo, destacar tudo não informa nada
