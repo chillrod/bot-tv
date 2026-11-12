@@ -8,7 +8,20 @@
 
   /* ---- base: segue o tema do VS Code (skin "vscode") ---- */
   body { margin: 0; padding: 0; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-sideBar-background); }
-  header { position: sticky; top: 0; z-index: 2; display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
+  header { position: sticky; top: 0; z-index: 2; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
+  .row { display: flex; gap: 10px; align-items: center; padding: 8px 10px; }
+  #lv { flex: none; font-size: .78em; padding: 1px 6px; border: 1px solid currentColor; border-radius: 3px; opacity: .8; cursor: default; }
+  #tabs { display: flex; gap: 2px; padding: 0 6px; overflow-x: auto; scrollbar-width: none; }
+  #tabs[hidden] { display: none; }
+  .tab { font: inherit; font-size: .85em; white-space: nowrap; color: var(--vscode-descriptionForeground); background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 4px 8px; cursor: pointer; }
+  .tab:hover { color: var(--vscode-foreground); background: transparent; }
+  .tab.on { color: var(--vscode-foreground); border-bottom-color: var(--vscode-focusBorder); }
+  .tab .dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--vscode-focusBorder); vertical-align: middle; }
+  #xp { height: 2px; background: var(--vscode-panel-border); }
+  #xp i { display: block; height: 100%; width: 0; background: var(--vscode-focusBorder); transition: width .6s ease-out; }
+  #toast { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 6px); padding: 3px 10px; border-radius: 4px; font-size: .85em; white-space: nowrap; color: var(--vscode-button-foreground); background: var(--vscode-button-background); pointer-events: none; }
+  .proj { display: none; margin-right: 6px; font-size: .74em; opacity: .7; }
+  body.multi.flow .proj { display: inline; }
   #mascot { width: 46px; height: 46px; flex: none; }
   #mascot .case { fill: none; stroke: currentColor; stroke-width: 6; }
   #mascot .screen { fill: currentColor; opacity: .12; }
@@ -46,11 +59,20 @@
   }
   .vw pre.body, .vw .hits a, .vw #mascot text { font-family: var(--mono); }
   .vw header { background: rgba(5, 5, 7, .92); border-bottom: 0; backdrop-filter: blur(6px); }
-  .vw header::after { /* linha do horizonte: rosa -> ciano */
-    content: ''; position: absolute; inset: auto 0 0 0; height: 1px;
-    background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan));
-    box-shadow: 0 0 8px var(--pink), 0 0 16px rgba(79, 240, 255, .5);
-  }
+  /* linha do horizonte = barra de XP: o trilho apagado, a parte ganha em neon rosa -> ciano */
+  .vw #xp { height: 2px; background: #1d1830; }
+  .vw #xp i { background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan)); box-shadow: 0 0 8px var(--pink), 0 0 14px rgba(79, 240, 255, .5); }
+  .vw #lv { color: var(--mint); opacity: 1; text-shadow: var(--glow); border-color: color-mix(in srgb, var(--mint) 45%, transparent); }
+  .vw .tab { color: var(--dim); border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; }
+  .vw .tab:hover { color: var(--fg); background: transparent; box-shadow: none; }
+  .vw .tab.on { color: var(--cyan); text-shadow: var(--glow); border-bottom-color: var(--pink); }
+  .vw .tab .dot { background: var(--pink); box-shadow: 0 0 6px var(--pink); }
+  .vw #toast { color: var(--bg); background: var(--mint); box-shadow: 0 0 14px rgba(124, 245, 200, .7); font-weight: 600; }
+  .vw .proj { color: var(--violet); opacity: 1; }
+  #toast[hidden] { display: none; }
+  .levelup #mascot { animation: levelup .9s ease-out; }
+  @keyframes levelup { 30% { transform: translateY(-6px) scale(1.12); } 60% { transform: translateY(1px) scale(.98); } }
+  @media (prefers-reduced-motion: reduce) { .levelup #mascot { animation: none; } }
   .vw #mascot { color: var(--pink); filter: drop-shadow(0 0 5px var(--pink)); }
   .vw #mascot text { fill: var(--cyan); }
   .vw #mascot .screen { fill: #000; opacity: 1; }
@@ -88,13 +110,18 @@
 </head>
 <body>
 <header>
-  <svg id="mascot" viewBox="0 0 128 128" aria-hidden="true">
-    <path class="case" d="M50 30 38 10M78 30l12-20"/>
-    <rect class="case" x="10" y="30" width="108" height="80" rx="18"/>
-    <rect class="screen" x="22" y="42" width="84" height="56" rx="10"/>
-    <text id="face" x="64" y="79" text-anchor="middle">T_T</text>
-  </svg>
-  <span id="state"></span><button id="pause"></button>
+  <div class="row">
+    <svg id="mascot" viewBox="0 0 128 128" aria-hidden="true">
+      <path class="case" d="M50 30 38 10M78 30l12-20"/>
+      <rect class="case" x="10" y="30" width="108" height="80" rx="18"/>
+      <rect class="screen" x="22" y="42" width="84" height="56" rx="10"/>
+      <text id="face" x="64" y="79" text-anchor="middle">T_T</text>
+    </svg>
+    <span id="state"></span><span id="lv">lv 1</span><button id="pause"></button>
+  </div>
+  <nav id="tabs" hidden></nav>
+  <div id="xp"><i></i></div>
+  <div id="toast" role="status" hidden></div>
 </header>
 <div id="todos" hidden></div>
 <div id="empty"></div>
@@ -104,6 +131,9 @@
   const MAX = 400; // mesmo limite do feed na extensão
   let UI = { labels: {}, empty: '', pause: 'Pause', resume: 'Resume' }; // textos chegam da extensão no idioma escolhido
   let isPaused = false;
+  let following = 'flow', projects = [];
+  const unread = new Set(); // projetos com passo novo que a aba seguida não mostrou
+  const LEVELUP_MS = 2600;  // quanto o aviso e a cara de comemoração ficam na tela
   // A cara do mascote acompanha o último passo.
   const FACE = { prompt: '•_•', text: '•‿•', thinking: '-_-', read: 'o_o', search: 'O_O', hits: '^o^', bash: '>_>', output: 'o_o', edit: '>_<', plan: '•_•', agent: '◉_◉', web: 'O_O', wait: '?_?', fail: 'T_T', stop: '^_^', tool: 'o_o' };
   const $ = (id) => document.getElementById(id);
@@ -119,7 +149,9 @@
 
   function render(it) {
     const d = el('div', 'item ' + it.kind);
+    d.dataset.project = it.project || '';
     const head = el('div');
+    if (it.projectName) head.append(el('span', 'proj', it.projectName));
     head.append(el('span', 'k', (it.agent ? 'sub · ' : '') + (UI.labels[it.kind] || it.kind)));
     const title = el(it.file ? 'a' : 'span', 'title', it.title || '');
     if (it.file) title.onclick = () => open(it.file, it.line || 1);
@@ -142,14 +174,61 @@
   // Só rola sozinho se a pessoa já está no fim; se subiu para reler, não puxa de volta.
   let stick = true;
   addEventListener('scroll', () => { stick = innerHeight + scrollY >= document.body.scrollHeight - 40; });
+  const shows = (project) => following === 'flow' || following === (project || '');
   function add(it, fresh) {
     $('empty').hidden = true;
     const d = render(it);
+    d.hidden = !shows(it.project);
     if (fresh) d.classList.add('fresh');
     feedEl.append(d);
     while (feedEl.children.length > MAX) feedEl.firstChild.remove();
+    if (d.hidden) {
+      if (fresh && !unread.has(it.project)) { unread.add(it.project); renderTabs(); }
+      return;
+    }
     if (stick) scrollTo(0, document.body.scrollHeight);
-    $('face').textContent = FACE[it.kind] || 'o_o';
+    if (!celebrating) $('face').textContent = FACE[it.kind] || 'o_o';
+  }
+
+  // ---------- abas ----------
+  function renderTabs() {
+    const nav = $('tabs');
+    nav.textContent = '';
+    nav.hidden = projects.length === 0;
+    document.body.classList.toggle('multi', projects.length > 1);
+    document.body.classList.toggle('flow', following === 'flow');
+    for (const p of [{ key: 'flow', name: UI.flow, tip: UI.flowTip }, ...projects]) {
+      const b = el('button', 'tab' + (following === p.key ? ' on' : ''), p.name);
+      b.title = p.tip || p.key;
+      if (p.key !== 'flow' && unread.has(p.key)) b.append(el('span', 'dot'));
+      b.onclick = () => vscode.postMessage({ type: 'follow', project: p.key });
+      nav.append(b);
+    }
+  }
+  function setFollowing(f) {
+    following = f;
+    unread.delete(f);
+    if (f === 'flow') unread.clear();
+    for (const d of feedEl.children) d.hidden = !shows(d.dataset.project);
+    renderTabs();
+    scrollTo(0, document.body.scrollHeight);
+  }
+
+  // ---------- nível ----------
+  let celebrating = false;
+  function setXp(x) {
+    $('lv').textContent = `lv ${x.level}`;
+    $('lv').title = x.tip;
+    $('xp').firstElementChild.style.width = `${Math.round(x.progress * 1000) / 10}%`;
+  }
+  function levelUp(level) {
+    const t = $('toast');
+    t.textContent = `★ ${UI.levelUp} lv ${level}`;
+    t.hidden = false;
+    celebrating = true;
+    $('face').textContent = '★_★';
+    document.body.classList.add('levelup');
+    setTimeout(() => { t.hidden = true; celebrating = false; document.body.classList.remove('levelup'); }, LEVELUP_MS);
   }
   function showTodos(list) {
     todosEl.textContent = '';
@@ -162,12 +241,17 @@
     UI = ui;
     $('empty').textContent = ui.empty;
     setPaused(isPaused);
+    renderTabs();
   }
   const setSkin = (s) => document.body.classList.toggle('vw', s !== 'vscode');
 
   addEventListener('message', ({ data: m }) => {
     if (m.type === 'ui') setUi(m.ui);
-    if (m.type === 'init') { setSkin(m.skin); setUi(m.ui); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
+    if (m.type === 'projects') { projects = m.projects; renderTabs(); }
+    if (m.type === 'following') setFollowing(m.following);
+    if (m.type === 'xp') setXp(m.xp);
+    if (m.type === 'levelup') levelUp(m.level);
+    if (m.type === 'init') { following = m.following; projects = m.projects; setXp(m.xp); setSkin(m.skin); setUi(m.ui); renderTabs(); feedEl.textContent = ''; m.feed.forEach((it) => add(it, false)); showTodos(m.todos); setPaused(m.paused); $('state').textContent = m.state; }
     if (m.type === 'add') add(m.item, true);
     if (m.type === 'todos') showTodos(m.todos);
     if (m.type === 'state') $('state').textContent = m.state;

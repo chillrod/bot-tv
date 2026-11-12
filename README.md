@@ -25,6 +25,10 @@ Think of it as pair programming where you're the one looking over the shoulder.
 
 If the agent's tool fails, you see that it failed. No fake diffs.
 
+Got Claude running in more than one project? Each one gets its own tab the moment it starts working. **flow…** follows everything (each step tagged with its project), a project tab follows just that one, and the others light up a little dot when something happens there. The editor only moves for the tab you're on.
+
+And the robot levels up. Every minute the agent spends working (from your prompt to "done") is XP. Level 2 takes 10 minutes, each level after that takes 10 more than the last, and there's no cap. The neon line under the header is the XP bar, hover `lv N` for the numbers. Idle sessions left open don't farm XP, nice try.
+
 ## the look
 
 By default the panel goes vaporwave: deep black, neon pink and cyan with a little glow, all in Roboto Mono, and the mascot up top making faces at whatever the agent is doing (`o_o` reading, `O_O` searching, `>_<` editing, `^_^` done, `T_T` when something broke). The lines it reads glow pink in your editor and a tiny TV sits in the gutter where the agent is looking.
@@ -83,7 +87,8 @@ To hack on the extension: `code --extensionDevelopmentPath=./extension <some pro
 ## rough edges
 
 - one VS Code window at a time owns the port, the second one shows "port in use"
-- several Claude sessions at once all land in the same feed
+- tabs are per project folder: two sessions in the same folder share a tab
+- XP lives in VS Code's storage on your machine. New machine, new robot
 - the agent's internal thinking doesn't show up: Claude Code doesn't hand it over, only what the agent writes
 - the plugin uses the new hooks-module API (Claude Code 2.1.275+), which is still early access
 - English and Portuguese only. Another language is one more block in `extension/i18n.js`, PRs welcome

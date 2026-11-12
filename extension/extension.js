@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { pick } = require('./i18n');
+const { levelOf, fmtDuration } = require('./level');
 
 const T = () => pick(vscode.workspace.getConfiguration('botTv').get('language'), vscode.env.language);
 
@@ -22,7 +23,19 @@ const queue = [];
 const feed = [];
 let paused = false, busy = false, state = '', todos = [], nextId = 1, viewShown = false;
 let agent = false; // o passo sendo mostrado veio de um subagente
-let out, status, hl, face, view, extUri;
+let out, status, hl, face, view, extUri, store, wsState;
+
+// Abas: "flow" segue tudo; senão, só o projeto (cwd da sessão) escolhido mexe no editor e na legenda.
+const projects = new Map(); // chave do projeto -> nome da pasta
+let following = 'flow';
+let cur = { project: '', name: '' }; // projeto do passo sendo mostrado
+let followed = true;                  // o passo sendo mostrado é da aba seguida
+
+// Nível: tempo de IA trabalhando (do prompt ao Stop), somado entre sessões e guardado no VS Code.
+const GAP_CAP_S = 120;    // intervalo máximo contado entre dois eventos de um turno: sessão largada aberta não vira XP
+const XP_SAVE_MS = 30_000; // de quanto em quanto tempo grava o XP enquanto a IA trabalha
+const turns = new Map();   // session_id -> hora do último evento com turno aberto
+let xpSeconds = 0, lastSave = 0;
 
 const skin = () => vscode.workspace.getConfiguration('botTv').get('skin');
 
@@ -46,6 +59,10 @@ function makeHighlight() {
 
 function activate(ctx) {
   extUri = ctx.extensionUri;
+  store = ctx.globalState;
+  wsState = ctx.workspaceState;
+  xpSeconds = store.get('botTv.xpSeconds', 0);
+  following = wsState.get('botTv.following', 'flow');
   out = vscode.window.createOutputChannel('bot_tv');
   status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   status.command = 'botTv.toggle';
@@ -92,8 +109,13 @@ function resolveWebviewView(v) {
     .replace(/%CSP%/g, v.webview.cspSource)
     .replace(/%FONT%/g, v.webview.asWebviewUri(vscode.Uri.joinPath(media, 'fonts', 'roboto-mono-latin-wght-normal.woff2')).toString());
   v.webview.onDidReceiveMessage((m) => {
-    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui });
+    if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui, following, projects: projectList(), xp: xpInfo() });
     if (m.type === 'toggle') toggle();
+    if (m.type === 'follow') {
+      following = m.project;
+      wsState.update('botTv.following', following);
+      post({ type: 'following', following });
+    }
     if (m.type === 'open') reveal(m.file, m.line, 1).catch((e) => out.appendLine(`erro ao abrir: ${e.message}`));
   });
   v.onDidDispose(() => { view = null; });
@@ -103,6 +125,8 @@ function post(msg) { view?.webview.postMessage(msg); }
 
 function addFeed(item) {
   if (agent) item.agent = true;
+  item.project = cur.project;
+  item.projectName = cur.name;
   item.id = nextId++;
   item.ts = Date.now();
   feed.push(item);
@@ -112,11 +136,53 @@ function addFeed(item) {
 }
 
 function setState(text) {
+  if (!followed) return; // passo de outro projeto: a legenda fica com a aba seguida
   state = text;
   status.text = paused ? `$(debug-pause) bot_tv: ${T().paused}` : `$(device-camera-video) bot_tv${text ? `: ${text}` : ''}`;
   status.tooltip = T().tooltip;
   status.show();
   post({ type: 'state', state });
+}
+
+// ---------- projetos e nível ----------
+
+function projectOf(ev) {
+  if (!ev.cwd) return '';
+  const p = path.resolve(ev.cwd);
+  const key = process.platform === 'win32' ? p.toLowerCase() : p; // mesma pasta, mesma aba, com qualquer caixa
+  if (!projects.has(key)) {
+    projects.set(key, path.basename(p) || p);
+    post({ type: 'projects', projects: projectList() });
+  }
+  return key;
+}
+
+const projectList = () => [...projects].map(([key, name]) => ({ key, name }));
+
+function xpInfo() {
+  const i = levelOf(xpSeconds);
+  return { level: i.level, progress: i.progress, tip: T().xpTip(i.level, fmtDuration(xpSeconds), fmtDuration(i.toNext)) };
+}
+
+function trackXp(ev) {
+  const id = ev.session_id || 'default', now = Date.now();
+  const last = turns.get(id);
+  if (last !== undefined) addXp(Math.min((now - last) / 1000, GAP_CAP_S));
+  if (ev.hook_event_name === 'Stop') { turns.delete(id); saveXp(); } else turns.set(id, now);
+}
+
+function addXp(s) {
+  const was = levelOf(xpSeconds).level;
+  xpSeconds += s;
+  const info = xpInfo();
+  if (info.level > was) { post({ type: 'levelup', level: info.level }); out.appendLine(`level up: ${info.level}`); }
+  post({ type: 'xp', xp: info });
+  if (Date.now() - lastSave > XP_SAVE_MS) saveXp();
+}
+
+function saveXp() {
+  lastSave = Date.now();
+  store?.update('botTv.xpSeconds', xpSeconds);
 }
 
 function toggle() {
@@ -136,7 +202,7 @@ function handle(req, res) {
     const tab = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
     return reply(200, {
       workspace: (vscode.workspace.workspaceFolders || []).map((f) => f.uri.fsPath),
-      paused, state, queued: queue.length, viewOpen: !!view, todos,
+      paused, state, queued: queue.length, viewOpen: !!view, todos, following, projects: projectList(), xp: xpInfo(),
       recent: feed.slice(-15).map((f) => `${f.kind}: ${f.title || ''}${f.hits ? ` [${f.hits.length} hits]` : ''}`),
       activeTab: tab instanceof vscode.TabInputTextDiff ? { diff: tab.original.toString(), modified: tab.modified.toString() } : tab?.uri?.toString() ?? null,
       activeFile: ed?.document.uri.toString() ?? null,
@@ -153,7 +219,8 @@ function handle(req, res) {
     try { ev = JSON.parse(body); } catch { return reply(400, { error: 'json inválido' }); }
     // A foto do "antes" tem que sair agora: o hook Pre segura o Claude até esta resposta.
     if (ev.hook_event_name === 'PreToolUse' && EDITS.has(ev.tool_name)) snapshot(ev);
-    queue.push({ ev });
+    trackXp(ev); // na chegada, não na fila: o tempo é o da IA, não o do replay
+    queue.push({ ev, project: projectOf(ev) });
     reply(200, { ok: true });
     if (!viewShown && !view) { viewShown = true; vscode.commands.executeCommand('botTv.feed.focus'); }
     drain();
@@ -175,7 +242,12 @@ async function drain() {
   while (queue.length && !paused) {
     const job = queue.shift();
     let visual = false;
-    try { agent = !!job.ev.agentId; visual = await show(job.ev); } catch (e) { out.appendLine(`  erro ao mostrar: ${e.message}`); }
+    agent = !!job.ev.agentId;
+    cur = { project: job.project, name: projects.get(job.project) || '' };
+    followed = following === 'flow' || following === job.project;
+    try { visual = await show(job.ev); } catch (e) { out.appendLine(`  erro ao mostrar: ${e.message}`); }
+    followed = true;
+    cur = { project: '', name: '' };
     if (visual) await new Promise((r) => setTimeout(r, vscode.workspace.getConfiguration('botTv').get('stepMs')));
   }
   busy = false;
@@ -266,6 +338,7 @@ async function after(ev, t, i) {
 // ---------- editor ----------
 
 async function reveal(file, start, count) {
+  if (!followed) return false; // outro projeto: só entra no feed, o editor fica com a aba seguida
   const doc = await vscode.workspace.openTextDocument(file);
   const ed = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
   if (!start && !count) { // arquivo inteiro: só abre no topo, destacar tudo não informa nada
@@ -281,6 +354,7 @@ async function reveal(file, start, count) {
 }
 
 async function revealHits(hits) {
+  if (!followed) return false;
   const file = hits[0].file;
   const doc = await vscode.workspace.openTextDocument(file);
   const ed = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
@@ -308,6 +382,7 @@ async function diff(ev, file) {
   const s = T();
   setState(s.edited(rel(file)));
   addFeed({ kind: 'edit', title: rel(file), sub: ev.tool_name === 'Write' ? s.fileWritten : '', file, line: selection ? selection.start.line + 1 : 1 });
+  if (!followed) return false;
   await vscode.commands.executeCommand('vscode.diff', left, right, s.diffTitle(path.basename(file)), { preview: true, preserveFocus: true, selection });
   return true;
 }
@@ -424,4 +499,4 @@ function findHits(text, cwd, sole) {
   return hits;
 }
 
-module.exports = { activate, deactivate() {}, _test: { findHits, bashCwd, readTarget, grepSoleFile, resolvePath } };
+module.exports = { activate, deactivate: saveXp, _test: { findHits, bashCwd, readTarget, grepSoleFile, resolvePath } };

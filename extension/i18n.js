@@ -14,10 +14,12 @@ const STR = {
     editing: (f) => `editing ${f}`, edited: (f) => `edited ${f}`, fileWritten: 'file written', diffTitle: (b) => `${b} ← AI`,
     failed: (t) => `${t} failed`,
     paused: 'paused', tooltip: 'bot_tv — click to pause/resume', portBusy: 'port in use',
+    xpTip: (l, worked, left) => `lv ${l} · ${worked} of agent work · ${left} to lv ${l + 1}`,
     ui: {
       labels: { prompt: 'you', text: 'ai', thinking: 'thinking', read: 'reading', search: 'searching', hits: 'found', bash: 'command', output: 'output', edit: 'edited', plan: 'plan', agent: 'subagent', web: 'web', wait: 'waiting', fail: 'failed', stop: 'end', tool: 'tool' },
       empty: 'nothing on air yet. run Claude Code with the bot-tv plugin.',
       pause: 'Pause', resume: 'Resume',
+      flow: 'flow…', flowTip: 'follow every project', levelUp: 'level up!',
     },
   },
   pt: {
@@ -34,10 +36,12 @@ const STR = {
     editing: (f) => `editando ${f}`, edited: (f) => `editou ${f}`, fileWritten: 'arquivo escrito', diffTitle: (b) => `${b} ← IA`,
     failed: (t) => `${t} falhou`,
     paused: 'pausado', tooltip: 'bot_tv — clique para pausar/retomar', portBusy: 'porta ocupada',
+    xpTip: (l, worked, left) => `lv ${l} · ${worked} de IA trabalhando · faltam ${left} pro lv ${l + 1}`,
     ui: {
       labels: { prompt: 'você', text: 'ia', thinking: 'raciocínio', read: 'lendo', search: 'buscando', hits: 'achou', bash: 'comando', output: 'saída', edit: 'editou', plan: 'plano', agent: 'subagente', web: 'web', wait: 'esperando', fail: 'falhou', stop: 'fim', tool: 'ferramenta' },
       empty: 'nada no ar ainda. rode o Claude Code com o plugin bot-tv.',
       pause: 'Pausar', resume: 'Retomar',
+      flow: 'flow…', flowTip: 'seguir todos os projetos', levelUp: 'subiu de nível!',
     },
   },
 };

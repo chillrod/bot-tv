@@ -3,29 +3,93 @@
   "displayName": "bot_tv",
   "description": "Watch Claude Code work: every read, search, command and edit, live in your editor.",
   "publisher": "chillrod",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "license": "MIT",
   "icon": "media/icon.png",
-  "repository": { "type": "git", "url": "https://github.com/chillrod/bot-tv" },
-  "engines": { "vscode": "^1.80.0" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chillrod/bot-tv"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
   "main": "./extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
-    "commands": [{ "command": "botTv.toggle", "title": "bot_tv: Pause/Resume" }],
+    "commands": [
+      {
+        "command": "botTv.toggle",
+        "title": "bot_tv: Pause/Resume"
+      }
+    ],
     "viewsContainers": {
-      "activitybar": [{ "id": "botTv", "title": "bot_tv", "icon": "media/bot.svg" }]
+      "activitybar": [
+        {
+          "id": "botTv",
+          "title": "​",
+          "icon": "media/bot.svg"
+        }
+      ]
     },
     "views": {
-      "botTv": [{ "type": "webview", "id": "botTv.feed", "name": "bot_tv" }]
+      "botTv": [
+        {
+          "type": "webview",
+          "id": "botTv.feed",
+          "name": "​"
+        }
+      ]
     },
-    "themes": [{ "label": "bot_tv Vaporwave", "uiTheme": "vs-dark", "path": "./themes/bot-tv-vaporwave-color-theme.json" }],
+    "themes": [
+      {
+        "label": "bot_tv Vaporwave",
+        "uiTheme": "vs-dark",
+        "path": "./themes/bot-tv-vaporwave-color-theme.json"
+      }
+    ],
     "configuration": {
       "title": "bot_tv",
       "properties": {
-        "botTv.skin": { "type": "string", "enum": ["vaporwave", "vscode"], "default": "vaporwave", "enumDescriptions": ["Deep black, neon pink and cyan glow, Roboto Mono.", "Follows your VS Code theme."], "description": "Look of the bot_tv panel and of the lines it highlights in the editor." },
-        "botTv.language": { "type": "string", "enum": ["auto", "en", "pt-BR"], "default": "auto", "enumDescriptions": ["Same language as VS Code (which follows your system by default).", "English", "Português (Brasil)"], "description": "Language of the bot_tv panel and status bar." },
-        "botTv.port": { "type": "number", "default": 7337, "description": "Local port the Claude Code plugin sends events to." },
-        "botTv.stepMs": { "type": "number", "default": 700, "description": "Minimum time (ms) each visual step stays on screen before the next one." }
+        "botTv.skin": {
+          "type": "string",
+          "enum": [
+            "vaporwave",
+            "vscode"
+          ],
+          "default": "vaporwave",
+          "enumDescriptions": [
+            "Deep black, neon pink and cyan glow, Roboto Mono.",
+            "Follows your VS Code theme."
+          ],
+          "description": "Look of the bot_tv panel and of the lines it highlights in the editor."
+        },
+        "botTv.language": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "en",
+            "pt-BR"
+          ],
+          "default": "auto",
+          "enumDescriptions": [
+            "Same language as VS Code (which follows your system by default).",
+            "English",
+            "Português (Brasil)"
+          ],
+          "description": "Language of the bot_tv panel and status bar."
+        },
+        "botTv.port": {
+          "type": "number",
+          "default": 7337,
+          "description": "Local port the Claude Code plugin sends events to."
+        },
+        "botTv.stepMs": {
+          "type": "number",
+          "default": 700,
+          "description": "Minimum time (ms) each visual step stays on screen before the next one."
+        }
       }
     }
   }

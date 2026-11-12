@@ -41,4 +41,29 @@ assert.deepStrictEqual(readTarget('cat lib/api.ts', cwd), { file: api });
 assert.strictEqual(readTarget('grep -rn x lib | head -5', cwd), null, 'head in a pipe is not a file read');
 
 fs.rmSync(root, { recursive: true });
+
+// ---- level: 10 min to lv 2, then 10 more per level, no cap ----
+const { levelOf, fmtDuration } = require('./extension/level.js');
+assert.strictEqual(levelOf(0).level, 1);
+assert.strictEqual(levelOf(599).level, 1);
+assert.strictEqual(levelOf(600).level, 2, '10 min of agent work = lv 2');
+assert.strictEqual(levelOf(1799).level, 2);
+assert.strictEqual(levelOf(1800).level, 3, '+20 min = lv 3');
+for (const s of [0, 1, 599, 600, 12345, 1e6, 1e9]) {
+  const { level, progress, toNext } = levelOf(s);
+  assert.ok(progress >= 0 && progress < 1 && toNext > 0, `progress in range at ${s}s`);
+  assert.ok(levelOf(s + toNext).level === level + 1, `toNext lands on the next level at ${s}s`);
+}
+assert.ok(levelOf(1e9).level > 1000, 'no level cap');
+assert.strictEqual(fmtDuration(42), '42s');
+assert.strictEqual(fmtDuration(17 * 60), '17min');
+assert.strictEqual(fmtDuration(3 * 3600 + 5 * 60), '3h05');
+
+// ---- i18n: every key exists in every language ----
+const { STR } = require('./extension/i18n.js');
+const keys = (o) => Object.keys(o).sort().join();
+assert.strictEqual(keys(STR.en), keys(STR.pt));
+assert.strictEqual(keys(STR.en.ui), keys(STR.pt.ui));
+assert.strictEqual(keys(STR.en.ui.labels), keys(STR.pt.ui.labels));
+
 console.log('selfcheck ok');
