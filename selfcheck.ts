@@ -1,25 +1,20 @@
-// Checks the VS Code side without VS Code: how commands and tool output turn into files and lines.
+// Checks the VS Code side without VS Code: how commands and tool output turn into files and lines, and the level math.
+// Runs on the compiled extension (npm test builds first). Node 22.18+ runs this .ts file directly.
 const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const Module = require('module');
-
-// vscode is stubbed: these functions don't touch its API
-const load = Module._load;
-Module._load = (req, ...rest) => (req === 'vscode' ? {} : load(req, ...rest));
-const { findHits, bashCwd, readTarget, grepSoleFile } = require('./extension/extension.js')._test;
-Module._load = load;
+const { findHits, bashCwd, readTarget, grepSoleFile } = require('./extension/out/parse.js');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bottv-'));
 fs.mkdirSync(path.join(root, 'src', 'lib'), { recursive: true });
 const api = path.join(root, 'src', 'lib', 'api.ts');
 fs.writeFileSync(api, Array.from({ length: 50 }, (_, i) => `line ${i + 1}`).join('\n'));
 // On Windows, also exercise Git Bash style paths (/c/Users/...)
-const shellPath = (p) => (process.platform === 'win32' ? p.replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`).replace(/\\/g, '/') : p);
+const shellPath = (p: string) => (process.platform === 'win32' ? p.replace(/^([A-Za-z]):/, (_, d) => `/${d.toLowerCase()}`).replace(/\\/g, '/') : p);
 
 const cmd = `cd "${shellPath(root)}/src" && grep -rn "useX" lib | head -5`;
-const cwd = bashCwd({ cwd: os.tmpdir(), tool_input: { command: cmd } });
+const cwd = bashCwd(os.tmpdir(), cmd);
 assert.strictEqual(path.resolve(cwd), path.join(root, 'src'), 'follows the cd inside the command');
 
 let hits = findHits('lib/api.ts:7:import x\nlib/api.ts:7:dup\nnot/there.ts:3:x\nrandom output', cwd, null);
@@ -43,7 +38,7 @@ assert.strictEqual(readTarget('grep -rn x lib | head -5', cwd), null, 'head in a
 fs.rmSync(root, { recursive: true });
 
 // ---- level: 10 min to lv 2, then 10 more per level, no cap ----
-const { levelOf, fmtDuration } = require('./extension/level.js');
+const { levelOf, fmtDuration } = require('./extension/out/level.js');
 assert.strictEqual(levelOf(0).level, 1);
 assert.strictEqual(levelOf(599).level, 1);
 assert.strictEqual(levelOf(600).level, 2, '10 min of agent work = lv 2');
@@ -58,12 +53,6 @@ assert.ok(levelOf(1e9).level > 1000, 'no level cap');
 assert.strictEqual(fmtDuration(42), '42s');
 assert.strictEqual(fmtDuration(17 * 60), '17min');
 assert.strictEqual(fmtDuration(3 * 3600 + 5 * 60), '3h05');
-
-// ---- i18n: every key exists in every language ----
-const { STR } = require('./extension/i18n.js');
-const keys = (o) => Object.keys(o).sort().join();
-assert.strictEqual(keys(STR.en), keys(STR.pt));
-assert.strictEqual(keys(STR.en.ui), keys(STR.pt.ui));
-assert.strictEqual(keys(STR.en.ui.labels), keys(STR.pt.ui.labels));
+// i18n key parity is enforced by the compiler (pt is typed as the en shape).
 
 console.log('selfcheck ok');

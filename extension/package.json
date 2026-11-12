@@ -3,7 +3,7 @@
   "displayName": "bot_tv",
   "description": "Watch Claude Code work: every read, search, command and edit, live in your editor.",
   "publisher": "chillrod",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": {
@@ -13,7 +13,7 @@
   "engines": {
     "vscode": "^1.80.0"
   },
-  "main": "./extension.js",
+  "main": "./out/extension.js",
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -92,5 +92,14 @@
         }
       }
     }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ."
+  },
+  "devDependencies": {
+    "@types/node": "20.17.10",
+    "@types/vscode": "1.80.0",
+    "typescript": "5.6.3"
   }
 }

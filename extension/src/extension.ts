@@ -1,46 +1,86 @@
-// bot_tv: recebe os hooks do Claude Code via HTTP local e mostra o trajeto da IA:
+// bot_tv: recebe os eventos do plugin do Claude Code via HTTP local e mostra o trajeto da IA:
 // um feed no painel lateral (falas, plano, comandos, resultados) e o editor acompanhando (leituras, achados, diffs).
-const vscode = require('vscode');
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const { pick } = require('./i18n');
-const { levelOf, fmtDuration } = require('./level');
+import * as vscode from 'vscode';
+import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
+import { pick, Strings } from './i18n';
+import { levelOf, fmtDuration } from './level';
+import { Hit, bashCwd, findHits, grepSoleFile, isFile, readTarget, resolvePath, responseText } from './parse';
 
-const T = () => pick(vscode.workspace.getConfiguration('botTv').get('language'), vscode.env.language);
+// O que o plugin manda: o formato dos hooks do Claude Code, mais os eventos próprios (AssistantText, Stop com reason).
+interface HookEvent {
+  hook_event_name: string;
+  tool_name?: string;
+  tool_input?: Record<string, any>; // argumentos da ferramenta, formato livre por ferramenta
+  tool_response?: unknown;
+  tool_text?: string;
+  tool_use_id?: string;
+  session_id?: string;
+  cwd?: string;
+  agentId?: string;
+  isError?: boolean;
+  prompt?: string;
+  text?: string;
+  message?: string;
+  reason?: string;
+}
+
+interface FeedItem {
+  kind: string;
+  title?: string;
+  sub?: string;
+  body?: string;
+  code?: boolean;
+  file?: string | null;
+  line?: number;
+  hits?: (Hit & { rel: string })[];
+  end?: boolean;
+  agent?: boolean;
+  project?: string;
+  projectName?: string;
+  id?: number;
+  ts?: number;
+}
+
+interface Todo { content: string; status: string }
+interface Job { ev: HookEvent; project: string }
+
+const T = (): Strings => pick(vscode.workspace.getConfiguration('botTv').get<string>('language'), vscode.env.language);
 
 const EDITS = new Set(['Edit', 'Write', 'MultiEdit']);
 const MAX_BODY = 50 * 1024 * 1024; // Write pode mandar arquivo grande; acima disso descarta
 const MAX_SNAPSHOTS = 100;
 const MAX_FEED = 400;     // itens guardados no feed (o webview corta no mesmo limite)
-const MAX_HITS = 200;     // resultados de busca listados por passo
-const MAX_SCAN = 3000;    // linhas de saída examinadas atrás de arquivo:linha
 const OUTPUT_LINES = 30;  // linhas de saída de comando mostradas no feed
 
-const before = new Map();      // id do tool_use -> conteúdo do arquivo antes da edição
-const queue = [];
-const feed = [];
-let paused = false, busy = false, state = '', todos = [], nextId = 1, viewShown = false;
+const before = new Map<string, string>(); // id do tool_use -> conteúdo do arquivo antes da edição
+const queue: Job[] = [];
+const feed: FeedItem[] = [];
+let paused = false, busy = false, state = '', nextId = 1, viewShown = false;
+let todos: Todo[] = [];
 let agent = false; // o passo sendo mostrado veio de um subagente
-let out, status, hl, face, view, extUri, store, wsState;
+let out: vscode.OutputChannel, status: vscode.StatusBarItem, hl: vscode.TextEditorDecorationType, face: vscode.TextEditorDecorationType;
+let view: vscode.WebviewView | null = null;
+let extUri: vscode.Uri, store: vscode.Memento | undefined, wsState: vscode.Memento;
 
 // Abas: "flow" segue tudo; senão, só o projeto (cwd da sessão) escolhido mexe no editor e na legenda.
-const projects = new Map(); // chave do projeto -> nome da pasta
+const projects = new Map<string, string>(); // chave do projeto -> nome da pasta
 let following = 'flow';
 let cur = { project: '', name: '' }; // projeto do passo sendo mostrado
 let followed = true;                  // o passo sendo mostrado é da aba seguida
 
 // Nível: tempo de IA trabalhando (do prompt ao Stop), somado entre sessões e guardado no VS Code.
-const GAP_CAP_S = 120;    // intervalo máximo contado entre dois eventos de um turno: sessão largada aberta não vira XP
+const GAP_CAP_S = 120;     // intervalo máximo contado entre dois eventos de um turno: sessão largada aberta não vira XP
 const XP_SAVE_MS = 30_000; // de quanto em quanto tempo grava o XP enquanto a IA trabalha
-const turns = new Map();   // session_id -> hora do último evento com turno aberto
+const turns = new Map<string, number>(); // session_id -> hora do último evento com turno aberto
 let xpSeconds = 0, lastSave = 0;
 
-const skin = () => vscode.workspace.getConfiguration('botTv').get('skin');
+const skin = () => vscode.workspace.getConfiguration('botTv').get<string>('skin');
 
 // Destaque das linhas que a IA está lendo/achou. No skin vaporwave: neon rosa com brilho.
-function makeHighlight() {
+function makeHighlight(): vscode.TextEditorDecorationType {
   if (skin() === 'vscode') {
     return vscode.window.createTextEditorDecorationType({ backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'), isWholeLine: true });
   }
@@ -57,7 +97,7 @@ function makeHighlight() {
   });
 }
 
-function activate(ctx) {
+export function activate(ctx: vscode.ExtensionContext): void {
   extUri = ctx.extensionUri;
   store = ctx.globalState;
   wsState = ctx.workspaceState;
@@ -88,7 +128,7 @@ function activate(ctx) {
     vscode.window.registerWebviewViewProvider('botTv.feed', { resolveWebviewView }, { webviewOptions: { retainContextWhenHidden: true } }),
   );
 
-  const port = vscode.workspace.getConfiguration('botTv').get('port');
+  const port = vscode.workspace.getConfiguration('botTv').get<number>('port', 7337);
   const server = http.createServer(handle);
   // shortcut: só uma janela do VS Code escuta a porta; para várias janelas, rotear pelo cwd do evento
   server.on('error', (e) => { out.appendLine(`servidor não subiu na porta ${port}: ${e.message}`); setState(T().portBusy); });
@@ -97,9 +137,11 @@ function activate(ctx) {
   setState(state);
 }
 
+export function deactivate(): void { saveXp(); }
+
 // ---------- painel ----------
 
-function resolveWebviewView(v) {
+function resolveWebviewView(v: vscode.WebviewView): void {
   view = v;
   const media = vscode.Uri.joinPath(extUri, 'media');
   v.webview.options = { enableScripts: true, localResourceRoots: [media] };
@@ -108,22 +150,22 @@ function resolveWebviewView(v) {
     .replace(/%NONCE%/g, nonce)
     .replace(/%CSP%/g, v.webview.cspSource)
     .replace(/%FONT%/g, v.webview.asWebviewUri(vscode.Uri.joinPath(media, 'fonts', 'roboto-mono-latin-wght-normal.woff2')).toString());
-  v.webview.onDidReceiveMessage((m) => {
+  v.webview.onDidReceiveMessage((m: { type: string; project?: string; file?: string; line?: number }) => {
     if (m.type === 'ready') post({ type: 'init', feed, todos, paused, state, skin: skin(), ui: T().ui, following, projects: projectList(), xp: xpInfo() });
     if (m.type === 'toggle') toggle();
-    if (m.type === 'follow') {
+    if (m.type === 'follow' && m.project) {
       following = m.project;
       wsState.update('botTv.following', following);
       post({ type: 'following', following });
     }
-    if (m.type === 'open') reveal(m.file, m.line, 1).catch((e) => out.appendLine(`erro ao abrir: ${e.message}`));
+    if (m.type === 'open' && m.file) reveal(m.file, m.line, 1).catch((e: Error) => out.appendLine(`erro ao abrir: ${e.message}`));
   });
   v.onDidDispose(() => { view = null; });
 }
 
-function post(msg) { view?.webview.postMessage(msg); }
+function post(msg: Record<string, unknown>): void { view?.webview.postMessage(msg); }
 
-function addFeed(item) {
+function addFeed(item: FeedItem): void {
   if (agent) item.agent = true;
   item.project = cur.project;
   item.projectName = cur.name;
@@ -135,7 +177,7 @@ function addFeed(item) {
   post({ type: 'add', item });
 }
 
-function setState(text) {
+function setState(text: string): void {
   if (!followed) return; // passo de outro projeto: a legenda fica com a aba seguida
   state = text;
   status.text = paused ? `$(debug-pause) bot_tv: ${T().paused}` : `$(device-camera-video) bot_tv${text ? `: ${text}` : ''}`;
@@ -146,7 +188,7 @@ function setState(text) {
 
 // ---------- projetos e nível ----------
 
-function projectOf(ev) {
+function projectOf(ev: HookEvent): string {
   if (!ev.cwd) return '';
   const p = path.resolve(ev.cwd);
   const key = process.platform === 'win32' ? p.toLowerCase() : p; // mesma pasta, mesma aba, com qualquer caixa
@@ -164,14 +206,14 @@ function xpInfo() {
   return { level: i.level, progress: i.progress, tip: T().xpTip(i.level, fmtDuration(xpSeconds), fmtDuration(i.toNext)) };
 }
 
-function trackXp(ev) {
+function trackXp(ev: HookEvent): void {
   const id = ev.session_id || 'default', now = Date.now();
   const last = turns.get(id);
   if (last !== undefined) addXp(Math.min((now - last) / 1000, GAP_CAP_S));
   if (ev.hook_event_name === 'Stop') { turns.delete(id); saveXp(); } else turns.set(id, now);
 }
 
-function addXp(s) {
+function addXp(s: number): void {
   const was = levelOf(xpSeconds).level;
   xpSeconds += s;
   const info = xpInfo();
@@ -180,12 +222,12 @@ function addXp(s) {
   if (Date.now() - lastSave > XP_SAVE_MS) saveXp();
 }
 
-function saveXp() {
+function saveXp(): void {
   lastSave = Date.now();
   store?.update('botTv.xpSeconds', xpSeconds);
 }
 
-function toggle() {
+function toggle(): void {
   paused = !paused;
   setState(state);
   post({ type: 'paused', paused });
@@ -194,8 +236,8 @@ function toggle() {
 
 // ---------- entrada ----------
 
-function handle(req, res) {
-  const reply = (code, obj) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
+function handle(req: http.IncomingMessage, res: http.ServerResponse): void {
+  const reply = (code: number, obj: unknown) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
 
   if (req.method === 'GET' && req.url === '/status') {
     const ed = vscode.window.activeTextEditor;
@@ -204,7 +246,8 @@ function handle(req, res) {
       workspace: (vscode.workspace.workspaceFolders || []).map((f) => f.uri.fsPath),
       paused, state, queued: queue.length, viewOpen: !!view, todos, following, projects: projectList(), xp: xpInfo(),
       recent: feed.slice(-15).map((f) => `${f.kind}: ${f.title || ''}${f.hits ? ` [${f.hits.length} hits]` : ''}`),
-      activeTab: tab instanceof vscode.TabInputTextDiff ? { diff: tab.original.toString(), modified: tab.modified.toString() } : tab?.uri?.toString() ?? null,
+      activeTab: tab instanceof vscode.TabInputTextDiff ? { diff: tab.original.toString(), modified: tab.modified.toString() }
+        : tab instanceof vscode.TabInputText ? tab.uri.toString() : null,
       activeFile: ed?.document.uri.toString() ?? null,
       visibleLines: ed ? ed.visibleRanges.map((r) => [r.start.line + 1, r.end.line + 1]) : [],
     });
@@ -212,13 +255,13 @@ function handle(req, res) {
   if (req.method !== 'POST' || req.url !== '/event') return reply(404, { error: 'not found' });
 
   let body = '', size = 0;
-  req.on('data', (d) => { size += d.length; if (size <= MAX_BODY) body += d; });
+  req.on('data', (d: Buffer) => { size += d.length; if (size <= MAX_BODY) body += d; });
   req.on('end', () => {
     if (size > MAX_BODY) return reply(413, { error: 'evento grande demais' });
-    let ev;
+    let ev: HookEvent;
     try { ev = JSON.parse(body); } catch { return reply(400, { error: 'json inválido' }); }
     // A foto do "antes" tem que sair agora: o hook Pre segura o Claude até esta resposta.
-    if (ev.hook_event_name === 'PreToolUse' && EDITS.has(ev.tool_name)) snapshot(ev);
+    if (ev.hook_event_name === 'PreToolUse' && EDITS.has(ev.tool_name || '')) snapshot(ev);
     trackXp(ev); // na chegada, não na fila: o tempo é o da IA, não o do replay
     queue.push({ ev, project: projectOf(ev) });
     reply(200, { ok: true });
@@ -227,35 +270,35 @@ function handle(req, res) {
   });
 }
 
-function snapshot(ev) {
+function snapshot(ev: HookEvent): void {
   const file = fileOf(ev);
   if (!file) return;
   let text = '';
   try { text = fs.readFileSync(file, 'utf8'); } catch { /* arquivo novo: antes = vazio */ }
   before.set(keyOf(ev), text);
-  while (before.size > MAX_SNAPSHOTS) before.delete(before.keys().next().value);
+  while (before.size > MAX_SNAPSHOTS) before.delete(before.keys().next().value!);
 }
 
-async function drain() {
+async function drain(): Promise<void> {
   if (busy) return;
   busy = true;
   while (queue.length && !paused) {
-    const job = queue.shift();
+    const job = queue.shift()!;
     let visual = false;
     agent = !!job.ev.agentId;
     cur = { project: job.project, name: projects.get(job.project) || '' };
     followed = following === 'flow' || following === job.project;
-    try { visual = await show(job.ev); } catch (e) { out.appendLine(`  erro ao mostrar: ${e.message}`); }
+    try { visual = await show(job.ev); } catch (e) { out.appendLine(`  erro ao mostrar: ${(e as Error).message}`); }
     followed = true;
     cur = { project: '', name: '' };
-    if (visual) await new Promise((r) => setTimeout(r, vscode.workspace.getConfiguration('botTv').get('stepMs')));
+    if (visual) await new Promise((r) => setTimeout(r, vscode.workspace.getConfiguration('botTv').get<number>('stepMs', 700)));
   }
   busy = false;
 }
 
 // ---------- o que cada evento mostra (retorna true quando mexeu no editor) ----------
 
-async function show(ev) {
+async function show(ev: HookEvent): Promise<boolean> {
   const s = T();
   switch (ev.hook_event_name) {
     case 'UserPromptSubmit': setState(s.thinking); addFeed({ kind: 'prompt', title: s.you, body: ev.prompt }); return false;
@@ -269,13 +312,13 @@ async function show(ev) {
       return false;
     }
     case 'SubagentStop': addFeed({ kind: 'stop', title: s.subagentDone }); return false;
-    case 'PreToolUse': return pre(ev, ev.tool_name, ev.tool_input || {});
-    case 'PostToolUse': return after(ev, ev.tool_name, ev.tool_input || {});
+    case 'PreToolUse': return pre(ev, ev.tool_name || '', ev.tool_input || {});
+    case 'PostToolUse': return after(ev, ev.tool_name || '', ev.tool_input || {});
   }
   return false;
 }
 
-async function pre(ev, t, i) {
+async function pre(ev: HookEvent, t: string, i: Record<string, any>): Promise<boolean> {
   const s = T();
   const file = fileOf(ev);
   if (EDITS.has(t)) { setState(s.editing(rel(file))); return false; } // o diff sai no Post
@@ -291,17 +334,17 @@ async function pre(ev, t, i) {
   }
   if (t === 'Glob') { setState(s.listing(i.pattern)); addFeed({ kind: 'search', title: i.pattern, sub: s.files }); return false; }
   if (t === 'Bash') {
-    const cwd = bashCwd(ev);
+    const cwd = bashCwd(ev.cwd, i.command);
     const r = readTarget(i.command || '', cwd);
     setState(i.description || s.runningCommand);
     addFeed({ kind: 'bash', title: i.description || s.command, body: i.command, code: true, file: r?.file, line: r?.start || 1 });
     return r ? reveal(r.file, r.start, r.count) : false;
   }
   if (t === 'TodoWrite') {
-    todos = (i.todos || []).map((x) => ({ content: x.content, status: x.status }));
+    todos = ((i.todos || []) as Todo[]).map((x) => ({ content: x.content, status: x.status }));
     post({ type: 'todos', todos });
-    const cur = todos.find((x) => x.status === 'in_progress');
-    addFeed({ kind: 'plan', title: cur ? s.now(cur.content) : s.planUpdated });
+    const now = todos.find((x) => x.status === 'in_progress');
+    addFeed({ kind: 'plan', title: now ? s.now(now.content) : s.planUpdated });
     return false;
   }
   if (t === 'Task' || t === 'Agent') { setState(s.subagentWorking); addFeed({ kind: 'agent', title: i.description || s.subagent, body: i.prompt }); return false; }
@@ -311,7 +354,7 @@ async function pre(ev, t, i) {
   return false;
 }
 
-async function after(ev, t, i) {
+async function after(ev: HookEvent, t: string, i: Record<string, any>): Promise<boolean> {
   const s = T();
   const file = fileOf(ev);
   if (ev.isError) { // a ferramenta rodou e falhou: nada mudou, então nada de diff nem de "achou"
@@ -323,9 +366,10 @@ async function after(ev, t, i) {
   if (EDITS.has(t) && file) return diff(ev, file);
   if (t !== 'Bash' && t !== 'Grep' && t !== 'Glob') return false;
 
-  const cwd = t === 'Bash' ? bashCwd(ev) : ev.cwd || '';
+  const cwd = t === 'Bash' ? bashCwd(ev.cwd, i.command) : ev.cwd || '';
   const text = responseText(ev.tool_response) || ev.tool_text || ''; // tool_text: o resultado como o modelo leu, se o registro não tiver texto
-  const sole = t === 'Bash' ? grepSoleFile(i.command || '', cwd) : i.path && isFile(resolvePath(cwd, i.path)) ? resolvePath(cwd, i.path) : null;
+  const pathArg = t !== 'Bash' ? resolvePath(cwd, i.path) : null;
+  const sole = t === 'Bash' ? grepSoleFile(i.command || '', cwd) : isFile(pathArg) ? pathArg : null;
   const hits = findHits(text, cwd, sole);
   const lines = text.split(/\r?\n/);
   const outBody = t === 'Bash' && text.trim() ? lines.slice(0, OUTPUT_LINES).join('\n') + (lines.length > OUTPUT_LINES ? `\n${s.moreLines(lines.length - OUTPUT_LINES)}` : '') : '';
@@ -337,7 +381,7 @@ async function after(ev, t, i) {
 
 // ---------- editor ----------
 
-async function reveal(file, start, count) {
+async function reveal(file: string, start?: number, count?: number): Promise<boolean> {
   if (!followed) return false; // outro projeto: só entra no feed, o editor fica com a aba seguida
   const doc = await vscode.workspace.openTextDocument(file);
   const ed = await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: true });
@@ -353,7 +397,7 @@ async function reveal(file, start, count) {
   return true;
 }
 
-async function revealHits(hits) {
+async function revealHits(hits: Hit[]): Promise<boolean> {
   if (!followed) return false;
   const file = hits[0].file;
   const doc = await vscode.workspace.openTextDocument(file);
@@ -364,7 +408,7 @@ async function revealHits(hits) {
   return true;
 }
 
-async function diff(ev, file) {
+async function diff(ev: HookEvent, file: string): Promise<boolean> {
   const key = keyOf(ev);
   if (!before.has(key)) before.set(key, ''); // Pre perdido (extensão subiu no meio): diff contra vazio
   const right = vscode.Uri.file(file);
@@ -372,8 +416,8 @@ async function diff(ev, file) {
 
   // Posição do trecho novo, calculada do disco: o documento aberto no VS Code pode ainda não ter recarregado.
   const i = ev.tool_input || {};
-  const needle = ev.tool_name === 'Edit' ? i.new_string : ev.tool_name === 'MultiEdit' ? i.edits?.at(-1)?.new_string : null;
-  let selection;
+  const needle: string | undefined = ev.tool_name === 'Edit' ? i.new_string : ev.tool_name === 'MultiEdit' ? i.edits?.at(-1)?.new_string : undefined;
+  let selection: vscode.Range | undefined;
   if (needle) {
     const text = fs.readFileSync(file, 'utf8');
     const at = text.indexOf(needle);
@@ -387,40 +431,25 @@ async function diff(ev, file) {
   return true;
 }
 
-function flash(ed, ranges, ms = 1500) {
+function flash(ed: vscode.TextEditor, ranges: vscode.Range[], ms = 1500): void {
   const d = hl; // se o skin mudar no meio, limpa a decoração que foi posta
   ed.setDecorations(d, ranges);
   ed.setDecorations(face, [new vscode.Range(ranges[0].start, ranges[0].start)]); // o mascote marca onde a IA está
   setTimeout(() => { ed.setDecorations(d, []); ed.setDecorations(face, []); }, ms);
 }
 
-function posAt(text, offset) {
+function posAt(text: string, offset: number): vscode.Position {
   const lines = text.slice(0, offset).split('\n');
-  return new vscode.Position(lines.length - 1, lines.at(-1).length);
+  return new vscode.Position(lines.length - 1, lines[lines.length - 1].length);
 }
 
-// ---------- leitura de comandos e saídas ----------
-
-function fileOf(ev) {
-  const p = ev.tool_input?.file_path;
-  return p ? resolvePath(ev.cwd, p) : null;
+function fileOf(ev: HookEvent): string | null {
+  return resolvePath(ev.cwd, ev.tool_input?.file_path);
 }
 
-function keyOf(ev) { return ev.tool_use_id || `${ev.session_id}:${fileOf(ev)}`; }
+function keyOf(ev: HookEvent): string { return ev.tool_use_id || `${ev.session_id}:${fileOf(ev)}`; }
 
-// Aceita caminhos do Git Bash (/c/Users/...) além dos do Windows.
-function resolvePath(cwd, p) {
-  if (!p) return null;
-  const m = /^\/([a-zA-Z])(\/.*)?$/.exec(p);
-  if (m && process.platform === 'win32') p = `${m[1].toUpperCase()}:${m[2] || '/'}`; // maiúscula: mesmo arquivo, mesma chave
-  return path.resolve(cwd || '', p);
-}
-
-function isFile(p) {
-  try { return !!p && fs.statSync(p).isFile(); } catch { return false; }
-}
-
-function rel(file) {
+function rel(file: string | null): string {
   if (!file) return '';
   for (const f of vscode.workspace.workspaceFolders || []) {
     const r = path.relative(f.uri.fsPath, file); // win32: compara sem diferenciar maiúsculas (c: vs C:)
@@ -428,75 +457,3 @@ function rel(file) {
   }
   return file;
 }
-
-// shortcut: segue os `cd` do comando em sequência, sem entender subshell nem `cd` depois do comando que importa
-function bashCwd(ev) {
-  let cwd = ev.cwd || '';
-  const re = /(?:^|&&|;|\|\|)\s*cd\s+(?:"([^"]*)"|'([^']*)'|([^\s;&|]+))/g;
-  for (const m of (ev.tool_input?.command || '').matchAll(re)) cwd = resolvePath(cwd, m[1] ?? m[2] ?? m[3]);
-  return cwd;
-}
-
-function segments(command) {
-  return command.split(/&&|\|\||;|\|/).map((s) => (s.match(/"[^"]*"|'[^']*'|\S+/g) || []).map((w) => w.replace(/^["']|["']$/g, '')));
-}
-
-// Comando de leitura (sed -n A,Bp / head / tail / cat) num arquivo existente -> trecho a mostrar.
-function readTarget(command, cwd) {
-  for (const [cmd, ...args] of segments(command)) {
-    if (!['sed', 'head', 'tail', 'cat'].includes(cmd)) continue;
-    const file = args.filter((a) => !a.startsWith('-')).map((a) => resolvePath(cwd, a)).find(isFile);
-    if (!file) continue;
-    if (cmd === 'cat') return { file };
-    if (cmd === 'sed') {
-      const r = args.map((a) => /^(\d+)(?:,(\d+))?p$/.exec(a)).find(Boolean);
-      return r ? { file, start: +r[1], count: (r[2] ? +r[2] : +r[1]) - +r[1] + 1 } : { file };
-    }
-    const nArg = args.findIndex((a) => a === '-n');
-    const n = nArg >= 0 ? +args[nArg + 1] : +(args.find((a) => /^-\d+$/.test(a)) || '-10').slice(1);
-    if (cmd === 'head') return { file, start: 1, count: n };
-    const total = fs.readFileSync(file, 'utf8').split('\n').length;
-    return { file, start: Math.max(1, total - n), count: n };
-  }
-  return null;
-}
-
-// `grep -n padrão arquivo` com um arquivo só imprime "linha:" sem o caminho; o arquivo vem do comando.
-function grepSoleFile(command, cwd) {
-  for (const [cmd, ...args] of segments(command)) {
-    if (!['grep', 'egrep', 'rg'].includes(cmd)) continue;
-    const files = args.filter((a) => !a.startsWith('-')).map((a) => resolvePath(cwd, a)).filter(isFile);
-    if (files.length === 1) return files[0];
-  }
-  return null;
-}
-
-function responseText(r) {
-  if (!r) return '';
-  if (typeof r === 'string') return r;
-  if (Array.isArray(r)) return r.map(responseText).join('\n');
-  return [r.stdout, typeof r.content === 'string' ? r.content : '', Array.isArray(r.filenames) ? r.filenames.join('\n') : '']
-    .filter(Boolean).join('\n');
-}
-
-// Linhas "arquivo:linha:", "linha:" (arquivo único) ou só "arquivo". Só vale se o arquivo existe: isso descarta falso positivo.
-function findHits(text, cwd, sole) {
-  const hits = [], seen = new Set();
-  for (const line of text.split(/\r?\n/).slice(0, MAX_SCAN)) {
-    if (hits.length >= MAX_HITS) break;
-    let file, ln = 1, m;
-    if ((m = /^((?:[A-Za-z]:)?[^:\n]+):(\d+)[:-]/.exec(line))) { file = m[1]; ln = +m[2]; }
-    else if (sole && (m = /^(\d+)[:-]/.exec(line))) { file = sole; ln = +m[1]; }
-    else if (line.trim() && line.length < 300) file = line.trim();
-    else continue;
-    const abs = file === sole ? sole : resolvePath(cwd, file);
-    if (!isFile(abs)) continue;
-    const key = `${abs}:${ln}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    hits.push({ file: abs, line: ln });
-  }
-  return hits;
-}
-
-module.exports = { activate, deactivate: saveXp, _test: { findHits, bashCwd, readTarget, grepSoleFile, resolvePath } };

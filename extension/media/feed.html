@@ -9,20 +9,37 @@
   /* ---- base: segue o tema do VS Code (skin "vscode") ---- */
   body { margin: 0; padding: 0; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-sideBar-background); }
   header { position: sticky; top: 0; z-index: 2; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
-  .row { display: flex; gap: 10px; align-items: center; padding: 8px 10px; }
-  #lv { flex: none; font-size: .78em; padding: 1px 6px; border: 1px solid currentColor; border-radius: 3px; opacity: .8; cursor: default; }
+  .row { display: flex; gap: 12px; align-items: center; padding: 10px 10px 8px; }
+  .side { flex: 1; min-width: 0; display: grid; gap: 7px; }
+  .line { display: flex; gap: 8px; align-items: center; min-width: 0; }
+  #level { cursor: default; }
+  #lv { flex: none; display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 7px; border: 1px solid currentColor; border-radius: 4px; line-height: 1.25; }
+  #lv b { font-size: .62em; letter-spacing: .1em; opacity: .75; }
+  #lvn { font-weight: 700; font-variant-numeric: tabular-nums; }
+  #pct { flex: none; min-width: 4ch; text-align: right; font-size: .72em; opacity: .7; font-variant-numeric: tabular-nums; }
   #tabs { display: flex; gap: 2px; padding: 0 6px; overflow-x: auto; scrollbar-width: none; }
   #tabs[hidden] { display: none; }
   .tab { font: inherit; font-size: .85em; white-space: nowrap; color: var(--vscode-descriptionForeground); background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 4px 8px; cursor: pointer; }
   .tab:hover { color: var(--vscode-foreground); background: transparent; }
   .tab.on { color: var(--vscode-foreground); border-bottom-color: var(--vscode-focusBorder); }
   .tab .dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; border-radius: 50%; background: var(--vscode-focusBorder); vertical-align: middle; }
-  #xp { height: 2px; background: var(--vscode-panel-border); }
-  #xp i { display: block; height: 100%; width: 0; background: var(--vscode-focusBorder); transition: width .6s ease-out; }
+  #xp { position: relative; flex: 1; min-width: 40px; height: 7px; border-radius: 4px; background: var(--vscode-panel-border); overflow: hidden; }
+  #xp i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: var(--vscode-focusBorder); overflow: hidden; transition: width .6s ease-out; }
+  #xp::after { /* marcas a cada 10%: cara de barra de jogo */
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(0, 0, 0, .45) calc(10% - 1px) 10%);
+  }
+  #xp i::after { /* reflexo que passa quando ganha XP */
+    content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .6), transparent);
+  }
+  #xp.gain i::after { animation: shimmer .9s ease-out; }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+  @media (prefers-reduced-motion: reduce) { #xp.gain i::after { animation: none; } #xp i { transition: none; } }
   #toast { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 6px); padding: 3px 10px; border-radius: 4px; font-size: .85em; white-space: nowrap; color: var(--vscode-button-foreground); background: var(--vscode-button-background); pointer-events: none; }
   .proj { display: none; margin-right: 6px; font-size: .74em; opacity: .7; }
   body.multi.flow .proj { display: inline; }
-  #mascot { width: 46px; height: 46px; flex: none; }
+  #mascot { width: 54px; height: 54px; flex: none; }
   #mascot .case { fill: none; stroke: currentColor; stroke-width: 6; }
   #mascot .screen { fill: currentColor; opacity: .12; }
   #mascot text { font: 700 30px var(--vscode-editor-font-family), monospace; fill: currentColor; }
@@ -59,10 +76,18 @@
   }
   .vw pre.body, .vw .hits a, .vw #mascot text { font-family: var(--mono); }
   .vw header { background: rgba(5, 5, 7, .92); border-bottom: 0; backdrop-filter: blur(6px); }
-  /* linha do horizonte = barra de XP: o trilho apagado, a parte ganha em neon rosa -> ciano */
-  .vw #xp { height: 2px; background: #1d1830; }
-  .vw #xp i { background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan)); box-shadow: 0 0 8px var(--pink), 0 0 14px rgba(79, 240, 255, .5); }
-  .vw #lv { color: var(--mint); opacity: 1; text-shadow: var(--glow); border-color: color-mix(in srgb, var(--mint) 45%, transparent); }
+  .vw header::after { /* linha do horizonte fechando o cabeçalho: rosa -> ciano */
+    content: ''; position: absolute; inset: auto 0 0 0; height: 1px;
+    background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan));
+    box-shadow: 0 0 8px var(--pink), 0 0 16px rgba(79, 240, 255, .5);
+  }
+  .vw #xp { background: #14112a; box-shadow: inset 0 0 0 1px #2a2342; }
+  .vw #xp i { background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan)); box-shadow: 0 0 10px rgba(255, 79, 216, .7), 0 0 18px rgba(79, 240, 255, .35); }
+  /* selo de nível: borda em degradê rosa -> ciano, número verde-água brilhando */
+  .vw #lv { color: var(--mint); border-color: transparent; background: linear-gradient(var(--bg), var(--bg)) padding-box, linear-gradient(90deg, var(--pink), var(--cyan)) border-box; box-shadow: 0 0 10px rgba(255, 79, 216, .3); }
+  .vw #lv b { color: var(--pink); opacity: 1; text-shadow: 0 0 6px rgba(255, 79, 216, .6); }
+  .vw #lvn { text-shadow: var(--glow); }
+  .vw #pct { color: var(--dim); opacity: 1; }
   .vw .tab { color: var(--dim); border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; }
   .vw .tab:hover { color: var(--fg); background: transparent; box-shadow: none; }
   .vw .tab.on { color: var(--cyan); text-shadow: var(--glow); border-bottom-color: var(--pink); }
@@ -117,10 +142,16 @@
       <rect class="screen" x="22" y="42" width="84" height="56" rx="10"/>
       <text id="face" x="64" y="79" text-anchor="middle">T_T</text>
     </svg>
-    <span id="state"></span><span id="lv">lv 1</span><button id="pause"></button>
+    <div class="side">
+      <div class="line"><span id="state"></span><button id="pause"></button></div>
+      <div class="line" id="level">
+        <span id="lv"><b>LV</b><span id="lvn">1</span></span>
+        <div id="xp"><i></i></div>
+        <span id="pct">0%</span>
+      </div>
+    </div>
   </div>
   <nav id="tabs" hidden></nav>
-  <div id="xp"><i></i></div>
   <div id="toast" role="status" hidden></div>
 </header>
 <div id="todos" hidden></div>
@@ -216,10 +247,19 @@
 
   // ---------- nível ----------
   let celebrating = false;
+  let lastXp = { level: 0, progress: -1 };
   function setXp(x) {
-    $('lv').textContent = `lv ${x.level}`;
-    $('lv').title = x.tip;
+    $('lvn').textContent = x.level;
+    $('level').title = x.tip;
     $('xp').firstElementChild.style.width = `${Math.round(x.progress * 1000) / 10}%`;
+    $('pct').textContent = `${Math.floor(x.progress * 100)}%`;
+    if (x.level === lastXp.level && x.progress > lastXp.progress) { // ganhou XP: reflexo passa na barra
+      const b = $('xp');
+      b.classList.remove('gain');
+      void b.offsetWidth; // reinicia a animação
+      b.classList.add('gain');
+    }
+    lastXp = x;
   }
   function levelUp(level) {
     const t = $('toast');

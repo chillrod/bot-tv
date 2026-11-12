@@ -1,0 +1,57 @@
+// Textos do bot_tv por idioma. O tipo vem do inglês: uma chave que faltar no português não compila.
+const en = {
+  you: 'You', ai: 'AI', reasoning: 'Reasoning',
+  thinking: 'thinking', waiting: 'waiting for you', waitingTitle: 'Waiting for you',
+  done: 'done', doneTitle: 'Done', interrupted: 'interrupted', interruptedTitle: 'Interrupted', errorTitle: 'Stopped with an error',
+  subagentDone: 'Subagent done', subagentWorking: 'subagent working', subagent: 'Subagent',
+  reading: (f: string) => `reading ${f}`, lines: (a: number, b: number) => `lines ${a}–${b}`,
+  searching: (p: string) => `searching ${p}`, listing: (p: string) => `listing ${p}`, files: 'files',
+  runningCommand: 'running a command', command: 'Command', output: 'Output', moreLines: (n: number) => `… +${n} lines`,
+  results: (n: number) => `${n} result${n > 1 ? 's' : ''}`,
+  planUpdated: 'Plan updated', now: (c: string) => `Now: ${c}`,
+  webSearch: 'searching the web', readingPage: 'reading a page',
+  editing: (f: string) => `editing ${f}`, edited: (f: string) => `edited ${f}`, fileWritten: 'file written', diffTitle: (b: string) => `${b} ← AI`,
+  failed: (t: string) => `${t} failed`,
+  paused: 'paused', tooltip: 'bot_tv — click to pause/resume', portBusy: 'port in use',
+  xpTip: (l: number, worked: string, left: string) => `lv ${l} · ${worked} of agent work · ${left} to lv ${l + 1}`,
+  // vai para o webview: só texto, nada de função
+  ui: {
+    labels: { prompt: 'you', text: 'ai', thinking: 'thinking', read: 'reading', search: 'searching', hits: 'found', bash: 'command', output: 'output', edit: 'edited', plan: 'plan', agent: 'subagent', web: 'web', wait: 'waiting', fail: 'failed', stop: 'end', tool: 'tool' },
+    empty: 'nothing on air yet. run Claude Code with the bot-tv plugin.',
+    pause: 'Pause', resume: 'Resume',
+    flow: 'flow…', flowTip: 'follow every project', levelUp: 'level up!',
+  },
+};
+
+export type Strings = typeof en;
+
+const pt: Strings = {
+  you: 'Você', ai: 'IA', reasoning: 'Raciocínio',
+  thinking: 'pensando', waiting: 'esperando você', waitingTitle: 'Esperando você',
+  done: 'terminou', doneTitle: 'Terminou', interrupted: 'interrompido', interruptedTitle: 'Interrompido', errorTitle: 'Parou com erro',
+  subagentDone: 'Subagente terminou', subagentWorking: 'subagente trabalhando', subagent: 'Subagente',
+  reading: (f) => `lendo ${f}`, lines: (a, b) => `linhas ${a}–${b}`,
+  searching: (p) => `buscando ${p}`, listing: (p) => `listando ${p}`, files: 'arquivos',
+  runningCommand: 'rodando comando', command: 'Comando', output: 'Saída', moreLines: (n) => `… +${n} linhas`,
+  results: (n) => `${n} resultado${n > 1 ? 's' : ''}`,
+  planUpdated: 'Plano atualizado', now: (c) => `Agora: ${c}`,
+  webSearch: 'pesquisando na web', readingPage: 'lendo página',
+  editing: (f) => `editando ${f}`, edited: (f) => `editou ${f}`, fileWritten: 'arquivo escrito', diffTitle: (b) => `${b} ← IA`,
+  failed: (t) => `${t} falhou`,
+  paused: 'pausado', tooltip: 'bot_tv — clique para pausar/retomar', portBusy: 'porta ocupada',
+  xpTip: (l, worked, left) => `lv ${l} · ${worked} de IA trabalhando · faltam ${left} pro lv ${l + 1}`,
+  ui: {
+    labels: { prompt: 'você', text: 'ia', thinking: 'raciocínio', read: 'lendo', search: 'buscando', hits: 'achou', bash: 'comando', output: 'saída', edit: 'editou', plan: 'plano', agent: 'subagente', web: 'web', wait: 'esperando', fail: 'falhou', stop: 'fim', tool: 'ferramenta' },
+    empty: 'nada no ar ainda. rode o Claude Code com o plugin bot-tv.',
+    pause: 'Pausar', resume: 'Retomar',
+    flow: 'flow…', flowTip: 'seguir todos os projetos', levelUp: 'subiu de nível!',
+  },
+};
+
+export const STR = { en, pt };
+
+// setting: "auto" | "en" | "pt-BR"; auto = idioma do VS Code, que por padrão segue o do sistema
+export function pick(setting: string | undefined, vscodeLanguage: string | undefined): Strings {
+  const l = setting && setting !== 'auto' ? setting : vscodeLanguage || 'en';
+  return STR[l.toLowerCase().startsWith('pt') ? 'pt' : 'en'];
+}

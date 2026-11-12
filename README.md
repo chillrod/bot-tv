@@ -1,98 +1,126 @@
 <p align="center">
-  <img src="assets/logo.svg" width="128" alt="bot_tv logo: a little TV robot with T_T eyes">
+  <img src="assets/logo.png" width="148" alt="bot_tv: a neon pink TV robot with T_T eyes">
 </p>
 
 <h1 align="center">bot_tv</h1>
 
-<p align="center"><i>your agent is coding. put it on tv.</i></p>
+<p align="center">
+  <b>your agent is coding. put it on tv.</b><br>
+  <sub>watch Claude Code work, live in VS Code: every read, search, command and edit.</sub>
+</p>
 
----
+<p align="center">
+  <img src="https://img.shields.io/badge/claude_code-plugin-ff4fd8?style=flat-square&labelColor=050507" alt="Claude Code plugin">
+  <img src="https://img.shields.io/badge/vs_code-extension-4ff0ff?style=flat-square&labelColor=050507" alt="VS Code extension">
+  <img src="https://img.shields.io/badge/typescript-strict-b98cff?style=flat-square&labelColor=050507" alt="TypeScript strict">
+  <img src="https://img.shields.io/badge/license-MIT-7cf5c8?style=flat-square&labelColor=050507" alt="MIT license">
+</p>
 
-You ask Claude Code for something and it goes off and greps twelve files, reads half of them, runs a few shell commands, edits three things and tells you it's done. You get a wall of tool calls in a terminal.
+<p align="center">
+  <a href="#install">install</a> ·
+  <a href="#whats-on">what's on</a> ·
+  <a href="#how-it-works">how it works</a> ·
+  <a href="#hack-on-it">hack on it</a> ·
+  <a href="#crew-wanted">crew wanted</a>
+</p>
 
-bot_tv turns that into a channel you can actually watch. Leave VS Code open next to the terminal and the editor follows the agent around: it jumps to the lines Claude is reading, highlights what a search found, shows the diff the moment an edit lands. A side panel runs the whole broadcast: what you asked, what the agent says between steps, its todo list, each command and its output, and every result you can click.
+<br>
 
-Think of it as pair programming where you're the one looking over the shoulder.
+<table>
+<tr>
+<td width="52%" valign="top">
 
-## what you see
+You ask Claude Code for something and it goes off: greps twelve files, reads half of them, runs a few commands, edits three things, says it's done. All you got was a wall of tool calls in a terminal.
 
-- the file Claude reads opens at the exact lines it read
-- searches (`Grep`, `Glob`, and plain `grep`/`rg`/`sed`/`head`/`cat` in Bash) jump to the first hit and light up the rest, and it follows the `cd` inside the command
-- edits open as a before → after diff with the new code selected
-- the feed: your prompt, the agent's messages, the plan with the current item, commands with their output, subagents, failures, "done"
-- steps are paced (700 ms by default) so it reads like a replay and not a strobe light
-- click the status bar item or the panel button to pause it
+**bot_tv turns that into a channel.** Keep VS Code open next to the terminal and the editor follows the agent around. It jumps to the lines Claude is reading, lights up what a search found and opens the diff the second an edit lands.
 
-If the agent's tool fails, you see that it failed. No fake diffs.
+The side panel runs the broadcast: your prompt, what the agent says between steps, its plan, every command with its output, every result one click away.
 
-Got Claude running in more than one project? Each one gets its own tab the moment it starts working. **flow…** follows everything (each step tagged with its project), a project tab follows just that one, and the others light up a little dot when something happens there. The editor only moves for the tab you're on.
+Pair programming, except you're the one looking over the shoulder.
 
-And the robot levels up. Every minute the agent spends working (from your prompt to "done") is XP. Level 2 takes 10 minutes, each level after that takes 10 more than the last, and there's no cap. The neon line under the header is the XP bar, hover `lv N` for the numbers. Idle sessions left open don't farm XP, nice try.
-
-## the look
-
-By default the panel goes vaporwave: deep black, neon pink and cyan with a little glow, all in Roboto Mono, and the mascot up top making faces at whatever the agent is doing (`o_o` reading, `O_O` searching, `>_<` editing, `^_^` done, `T_T` when something broke). The lines it reads glow pink in your editor and a tiny TV sits in the gutter where the agent is looking.
-
-Want the whole editor to match? Pick **bot_tv Vaporwave** in *Preferences: Color Theme*. Prefer something calmer? Set `"botTv.skin": "vscode"` and the panel just follows your theme.
-
-It speaks English and Portuguese, following your VS Code language (which follows your system unless you changed it). Force one with `"botTv.language": "en"` or `"pt-BR"`.
+</td>
+<td width="48%" valign="top">
+<img src="assets/panel.png" alt="The bot_tv panel: mascot with level badge and XP bar, project tabs, the agent's plan, and a feed of searches, reads, commands and edits">
+</td>
+</tr>
+</table>
 
 ## install
 
-You need two pieces: the Claude Code plugin (sends the events) and the VS Code extension (shows them).
+Two pieces: a Claude Code plugin that sends the events, and a VS Code extension that shows them.
 
-**1. the plugin.** At a Claude Code prompt:
-
-```
+```text
 /plugin install bot-tv --marketplace chillrod/bot-tv
 ```
 
-Answer `y` to add the marketplace, then pick a scope. From a shell:
+Say `y` to add the marketplace and pick a scope. Then, still in Claude Code:
 
-```
-claude plugin install bot-tv --marketplace chillrod/bot-tv
-```
-
-**2. the extension.** In Claude Code, run:
-
-```
+```text
 /bot-tv-vscode
 ```
 
-It installs `bot-tv.vsix` (which ships with the plugin) through the `code` CLI. Or do it by hand with `code --install-extension bot-tv.vsix`. Reload VS Code and click the little TV in the activity bar.
+That installs the extension that ships inside the plugin. Reload VS Code and hit the little TV in the activity bar.
 
-Best setup: Claude Code in a terminal **outside** VS Code. Diffs and jumps grab the editor focus, and you don't want that in the window where you're typing.
+<sub>From a shell instead: `claude plugin install bot-tv --marketplace chillrod/bot-tv`, then `code --install-extension bot-tv.vsix` from the plugin folder.</sub>
+
+> **best seat in the house:** run Claude Code in a terminal *outside* VS Code. Jumps and diffs grab the editor focus, and you don't want that where you're typing.
+
+## what's on
+
+**the editor follows.** Reads open at the exact lines. Searches (`Grep`, `Glob`, and plain `grep` / `rg` / `sed` / `head` / `cat` in Bash, `cd` included) jump to the first hit and light up the rest. Edits open as a before → after diff with the new code selected. A tool that fails shows up as failed, never as a fake diff.
+
+**the feed narrates.** Prompt, agent messages, the plan with the current item, commands and their output, subagents, failures, done. Steps are paced (700 ms by default) so it plays like a replay, not a strobe light.
+
+**one tab per project.** Got Claude running in more than one folder? Each gets a tab the moment it starts working. `flow…` follows everything, a project tab follows only that one, and the rest blink a dot when something happens there. The editor only moves for the tab you're on.
+
+**the robot levels up.** Every minute the agent spends working (prompt to done) is XP. Level 2 takes 10 minutes, every level after takes 10 more than the last, no cap. The badge and bar live under the robot, hover for the numbers. Sessions left idle don't farm XP. Nice try.
+
+**the robot reacts.** `o_o` reading · `O_O` searching · `^o^` found it · `>_<` editing · `^_^` done · `T_T` something broke · `★_★` level up.
+
+**the look.** Deep black, neon pink and cyan, a little glow, all Roboto Mono. Want the whole editor in it? Pick **bot_tv Vaporwave** in *Preferences: Color Theme*. Want it calm? `"botTv.skin": "vscode"` and the panel follows your theme.
+
+**the language.** English or Portuguese, matching your VS Code (which matches your system unless you changed it). Force one with `"botTv.language": "en" | "pt-BR"`.
 
 ## how it works
 
-```
-Claude Code ── plugin (hooks/register.ts) ── POST 127.0.0.1:7337 ──▶ VS Code extension ──▶ editor + panel
-```
-
-The plugin is a Claude Code hooks module. It listens to prompts, the agent's text, every tool call (before and after it runs) and the end of each turn, and posts them to localhost. Before an edit runs, the extension takes a snapshot of the file so it can show you a real diff afterwards.
-
-Nothing leaves your machine. If VS Code isn't open, the plugin shrugs and Claude keeps working like nothing happened.
-
-## dev
-
-```
-npm test          # extension parsing checks + plugin tests (needs the claude CLI)
-npm run package   # rebuilds bot-tv.vsix
+```text
+Claude Code ──▶ plugin (hooks/register.ts) ──▶ POST 127.0.0.1:7337 ──▶ VS Code extension ──▶ editor + panel
 ```
 
-To hack on the extension: `code --extensionDevelopmentPath=./extension <some project>`. To hack on the plugin: `claude --plugin-dir .`.
+The plugin is a Claude Code hooks module. It hears prompts, the agent's text, every tool call (before and after it runs) and the end of each turn, and posts them to localhost. Right before an edit runs, the extension snapshots the file, so the diff you see is the real one.
 
-`GET http://127.0.0.1:7337/status` tells you what the extension last showed (handy when you can't see the screen).
+Nothing leaves your machine. VS Code closed? The plugin shrugs and Claude carries on.
+
+## hack on it
+
+```bash
+npm run setup     # install the extension's dev dependencies
+npm test          # compile + parsing/level checks + plugin tests (needs the claude CLI)
+npm run package   # build bot-tv.vsix
+```
+
+- extension: TypeScript in `extension/src`, compiled to `extension/out`. Try it with `code --extensionDevelopmentPath=./extension <some project>`.
+- plugin: `hooks/register.ts`. Load it with `claude --plugin-dir .`.
+- `GET http://127.0.0.1:7337/status` says what the extension last showed. Handy when you can't see the screen.
+- Node 22.18+.
 
 ## rough edges
 
-- one VS Code window at a time owns the port, the second one shows "port in use"
-- tabs are per project folder: two sessions in the same folder share a tab
+- one VS Code window owns the port at a time; a second one says "port in use"
+- tabs are per folder, so two sessions in the same folder share one
 - XP lives in VS Code's storage on your machine. New machine, new robot
-- the agent's internal thinking doesn't show up: Claude Code doesn't hand it over, only what the agent writes
-- the plugin uses the new hooks-module API (Claude Code 2.1.275+), which is still early access
-- English and Portuguese only. Another language is one more block in `extension/i18n.js`, PRs welcome
-- Claude Code only. A Codex adapter would just need to post the same events
+- the agent's private reasoning never shows up, only what it writes. Claude Code doesn't hand it over
+- the plugin rides the hooks-module API (Claude Code 2.1.275+), still early access
+- English and Portuguese only. Another language is one block in `extension/src/i18n.ts`
+- Claude Code only for now. A Codex adapter just needs to post the same events
+
+## crew wanted
+
+bot_tv is small and moving fast, and it needs a couple of **fixed collaborators**: people who'll own the PR pipeline (review, CI, releases) and handle publishing (VS Code Marketplace, Open VSX, the plugin marketplace).
+
+If that's you, email **[chillrod77@gmail.com](mailto:chillrod77@gmail.com)** with your GitHub handle and the part you'd like to own.
+
+Drive-by PRs and issues are welcome too, no email needed.
 
 ## license
 

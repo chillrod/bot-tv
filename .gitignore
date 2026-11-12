@@ -1,4 +1,5 @@
 node_modules/
+extension/out/
 *.log
 .DS_Store
 .claude-plugin/types/

@@ -2,8 +2,11 @@
   "name": "bot-tv",
   "private": true,
   "license": "MIT",
+  "engines": { "node": ">=22.18" },
   "scripts": {
-    "test": "node selfcheck.js && claude plugin test .",
-    "package": "cd extension && npx --yes @vscode/vsce@3.6.0 package --allow-missing-repository -o ../bot-tv.vsix"
+    "setup": "npm --prefix extension install",
+    "build": "npm --prefix extension run compile",
+    "test": "npm run build && node selfcheck.ts && claude plugin test .",
+    "package": "cd extension && npx --yes @vscode/vsce@3.6.0 package -o ../bot-tv.vsix"
   }
 }
