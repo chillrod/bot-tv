@@ -10,7 +10,7 @@
   body { margin: 0; padding: 0; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); background: var(--vscode-sideBar-background); }
   header { position: sticky; top: 0; z-index: 2; background: var(--vscode-sideBar-background); border-bottom: 1px solid var(--vscode-panel-border); }
   .row { display: flex; gap: 12px; align-items: center; padding: 10px 10px 8px; }
-  .side { flex: 1; min-width: 0; display: grid; gap: 7px; }
+  #foot { display: grid; gap: 5px; padding: 0 10px 8px; }
   .line { display: flex; gap: 8px; align-items: center; min-width: 0; }
   #level { cursor: default; }
   #lv { flex: none; display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 7px; border: 1px solid currentColor; border-radius: 4px; line-height: 1.25; }
@@ -147,14 +147,15 @@
       <rect class="screen" x="22" y="42" width="84" height="56" rx="10"/>
       <text id="face" x="64" y="79" text-anchor="middle">T_T</text>
     </svg>
-    <div class="side">
-      <div class="line"><span id="state"></span><button id="pause"></button></div>
-      <div class="line" id="level">
-        <span id="lv"><b>LV</b><span id="lvn">1</span></span>
-        <div id="xp"><i></i></div>
-        <span id="pct">0%</span>
-      </div>
-      <button id="upd" hidden></button>
+    <span id="state"></span>
+    <span id="lv"><b>LV</b><span id="lvn">1</span></span>
+    <button id="pause"></button>
+  </div>
+  <div id="foot">
+    <button id="upd" hidden></button>
+    <div class="line" id="level">
+      <div id="xp"><i></i></div>
+      <span id="pct">0%</span>
     </div>
   </div>
   <nav id="tabs" hidden></nav>
@@ -257,6 +258,7 @@
   function setXp(x) {
     $('lvn').textContent = x.level;
     $('level').title = x.tip;
+    $('lv').title = x.tip;
     $('xp').firstElementChild.style.width = `${Math.round(x.progress * 1000) / 10}%`;
     $('pct').textContent = `${Math.floor(x.progress * 100)}%`;
     if (x.level === lastXp.level && x.progress > lastXp.progress) { // ganhou XP: reflexo passa na barra
