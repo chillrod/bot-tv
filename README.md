@@ -28,9 +28,9 @@
 <br>
 
 <p align="center">
-  <img src="assets/demo.gif" alt="VS Code with the bot_tv panel on the left and the editor on the right, following one Claude task: it reads Editor.tsx and the read lines light up in neon pink, it searches for Timeline and the hit lights up, it edits the file and a before/after diff opens with the new lines in green, a sed command changes layout.css and its diff opens too, then the tests pass and the robot smiles">
+  <img src="assets/demo.gif" alt="VS Code with the bot_tv panel on the left and the editor on the right, following one Claude task: ls ~/Code opens that folder as a tree in the editor, Editor.tsx is read and its lines light up in neon pink, a search for Timeline lights up the hit, an edit opens a before/after diff with the new lines in green, a sed command changes layout.css and its diff opens too, the tests pass, and the session button by Pause opens the list of Claude Code sessions, with the other session marked by a green dot">
   <br>
-  <sub>one task, start to finish. The panel on the left is the real one; the editor is drawn in the bot_tv Vaporwave theme.</sub>
+  <sub>one task, start to finish, and the session picker at the end. The panel on the left is the real one; the editor is drawn in the bot_tv Vaporwave theme.</sub>
 </p>
 
 <br>
