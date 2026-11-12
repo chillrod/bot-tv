@@ -36,7 +36,7 @@
   #xp.gain i::after { animation: shimmer .9s ease-out; }
   @keyframes shimmer { to { transform: translateX(100%); } }
   @media (prefers-reduced-motion: reduce) { #xp.gain i::after { animation: none; } #xp i { transition: none; } }
-  #upd { flex: none; align-self: flex-start; margin: 4px 0 0; padding: 1px 8px; border-radius: 10px; font: inherit; font-size: .72em; cursor: pointer; border: 1px solid currentColor; color: var(--vscode-button-foreground); background: var(--vscode-button-background); animation: pulse 1.8s ease-in-out infinite; }
+  #upd { flex: none; align-self: flex-start; justify-self: start; width: max-content; margin: 4px 0 0; padding: 1px 8px; border-radius: 10px; font: inherit; font-size: .72em; cursor: pointer; border: 1px solid currentColor; color: var(--vscode-button-foreground); background: var(--vscode-button-background); animation: pulse 1.8s ease-in-out infinite; }
   #upd[hidden] { display: none; }
   .vw #upd { color: var(--bg); background: var(--mint); border-color: transparent; box-shadow: 0 0 12px rgba(124, 245, 200, .7); font-weight: 600; }
   @keyframes pulse { 50% { opacity: .55; } }
