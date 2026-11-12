@@ -60,7 +60,7 @@ The first line registers this repo as a marketplace, the second installs the plu
 /bot-tv-vscode
 ```
 
-That installs the extension that ships inside the plugin. Reload VS Code and hit the little TV in the activity bar.
+That installs the extension that ships inside the plugin (it's a plugin command, so it works right after the install, no restart needed; if it says unknown command, run `/reload-plugins`). Reload VS Code and hit the little TV in the activity bar.
 
 <sub>From a shell instead: `claude plugin marketplace add chillrod/bot-tv`, then `claude plugin install bot-tv --marketplace chillrod/bot-tv`, then `code --install-extension bot-tv.vsix` from the plugin folder.</sub>
 
