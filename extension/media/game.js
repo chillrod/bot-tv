@@ -25,7 +25,7 @@
     en: {
       castle: 'castle', hide: 'hide game', show: 'show game',
       zones: { gate: 'Ramparts', hall: 'Great Hall', library: 'Archive', chapel: 'Chapel', catacombs: 'Crypts', clock: 'Bell Tower', keep: 'Throne Spire' },
-      down: 'DOWN', castleOf: (n) => `Castle of ${n}`, castleN: (k) => `castle ${k}`, conquered: 'Castle conquered', defeated: (n) => `${n} defeated`,
+      down: 'DOWN', room: 'Save room', castleOf: (n) => `Castle of ${n}`, castleN: (k) => `castle ${k}`, conquered: 'Castle conquered', defeated: (n) => `${n} defeated`,
       species: ['Gargoyle', 'Specter', 'Bat', 'Skeleton', 'Armor', 'Ghoul', 'Harpy', 'Golem', 'Lich', 'Slime', 'Crypt Hound', 'Hollow Bishop'],
       adj: ['Bone', 'Grim', 'Crimson', 'Pale', 'Ancient', 'Starving', 'Eyeless', 'Wax', 'Cursed', 'Cracked', 'Ash'],
       titles: ['Warden of Bells', 'the Crimson', 'Lord of Mist', 'the Clockmaker', 'Fallen Bishop', 'Keeper of Crypts', 'the Lightless', 'Candle Eater'],
@@ -35,7 +35,7 @@
     pt: {
       castle: 'castelo', hide: 'esconder jogo', show: 'mostrar jogo',
       zones: { gate: 'Muralha', hall: 'Grande Salão', library: 'Arquivo', chapel: 'Capela', catacombs: 'Criptas', clock: 'Torre do Sino', keep: 'Torre do Trono' },
-      down: 'CAIU', castleOf: (n) => `Castelo de ${n}`, castleN: (k) => `castelo ${k}`, conquered: 'Castelo conquistado', defeated: (n) => `${n} caiu`,
+      down: 'CAIU', room: 'Sala de descanso', castleOf: (n) => `Castelo de ${n}`, castleN: (k) => `castelo ${k}`, conquered: 'Castelo conquistado', defeated: (n) => `${n} caiu`,
       // ":f" marca substantivo feminino; "m/f" são as duas formas do adjetivo, para concordar
       species: ['Gárgula:f', 'Espectro', 'Morcego', 'Esqueleto', 'Armadura:f', 'Carniçal', 'Harpia:f', 'Golem', 'Lich', 'Lodo', 'Cão das Criptas', 'Bispo Oco'],
       adj: ['de Ossos', 'Sombrio/Sombria', 'Carmesim', 'Pálido/Pálida', 'Ancestral', 'Faminto/Faminta', 'sem Olhos', 'de Cera', 'Maldito/Maldita', 'Rachado/Rachada', 'de Cinzas'],
@@ -175,7 +175,8 @@
   const P = [], F = [], STARS = Array.from({ length: 40 }, () => [vr(W), vr(30)]);
   const RAIN = Array.from({ length: 50 }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 0.6 + Math.random() * 0.6 }));
   const TOWERS = Array.from({ length: 12 }, () => [6 + vr(10), 14 + vr(20)]);
-  let now = 0, flash = 0, fade = 0, banner = null, bat = null, batT = 4, wxT = 60, boltT = 6, atkT = 0;
+  const IDLE_S = 120; // sem evento do Claude por esse tempo: o robô vai para a sala de descanso
+  let idle = false, quietT = 0, now = 0, flash = 0, fade = 0, banner = null, bat = null, batT = 4, wxT = 60, boltT = 6, atkT = 0;
 
   const z = () => (seg ? seg.z : 'gate');
   const alive = (f) => f && !f.dead;
@@ -425,8 +426,36 @@
     }
     if (Math.floor(now * 3) % 2) { g.fillStyle = '#ff4fd8'; g.fillRect(ax(hero.x), ay(hero.y), 1, 1); }
   }
+  // Sala de descanso (estilo sala de save do Symphony of the Night): o robô espera aqui quando o Claude fica parado.
+  function drawRoom() {
+    const cx = W / 2, pulse = 0.5 + 0.5 * Math.sin(now * 2);
+    g.fillStyle = '#0c0818'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#150e24';
+    for (let y = 0; y < 48; y += 8) g.fillRect(0, y, W, 1);
+    for (let y = 0, r = 0; y < 48; y += 8, r++) for (let x = (r & 1) * 8; x < W; x += 16) g.fillRect(x, y, 1, 8);
+    for (const x of [28, 204]) { // pilares com tocha
+      g.fillStyle = '#1c1430'; g.fillRect(x, 0, 8, 48); g.fillStyle = '#ffffff0c'; g.fillRect(x + 1, 0, 1, 48);
+      g.fillStyle = '#8a7040'; g.fillRect(x + 2, 22, 4, 2); flame(x + 4, 19, '#ff9a3c');
+    }
+    g.fillStyle = '#1c1430'; g.fillRect(0, 48, W, H - 48); g.fillStyle = '#4a3a68'; g.fillRect(0, 48, W, 1);
+    g.fillStyle = `rgba(255,79,216,${0.07 + 0.05 * pulse})`; g.fillRect(cx - 13, 8, 26, 40); // facho de luz
+    g.fillStyle = `rgba(255,79,216,${0.35 + 0.35 * pulse})`; g.beginPath(); g.ellipse(cx, 49, 18, 3, 0, 0, 7); g.fill();
+    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(cx, 49, 10, 1.5, 0, 0, 7); g.fill();
+    for (let i = 0; i < 12; i++) { g.fillStyle = i % 3 ? '#ff9ae8' : '#ffffff'; g.fillRect(Math.round(cx - 12 + (i * 7) % 24), Math.round(48 - (now * 7 + i * 9) % 38), 1, 1); }
+    const bx = Math.round(cx - 5), by = 37;
+    g.fillStyle = '#120818'; g.fillRect(bx + 1, by + 3, 9, 5);
+    sprite(BOT, bx, by, { a: '#ff4fd8', b: '#ff4fd8', e: '#4ff0ff', m: '#4ff0ff' });
+    for (let i = 0; i < 3; i++) { const t = (now * 0.5 + i / 3) % 1; g.globalAlpha = 1 - t; text('z', bx + 12 + Math.round(t * 8), by - 2 - Math.round(t * 14), '#b98cff', false, 1 + (i & 1)); }
+    g.globalAlpha = 1;
+    text(T.room, cx, 4, '#f0e0c0', true);
+  }
   function draw() {
     g.setTransform(1, 0, 0, 1, 0, 0);
+    if (idle) {
+      drawRoom();
+      if (fade > 0) { g.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; g.fillRect(0, 0, W, H); }
+      return;
+    }
     drawBackground();
     for (let i = Math.max(0, S.seg - 3); i < Math.min(C.segs.length, S.seg + 4); i++) drawSeg(C.segs[i], i);
     foesHere().forEach(drawFoe);
@@ -505,6 +534,8 @@
     if (S.wx === 'storm' && (boltT -= dt) <= 0) { boltT = 5 + Math.random() * 5; flash = Math.max(flash, 0.18); }
     if (seg.type === 'finale' && Math.random() < dt * 3) burst(hero.x + 20 + Math.random() * 80, hero.y - 30 - Math.random() * 15, ['#ff4fd8', '#4ff0ff', '#f0d040', '#7cf5c8'], 18, 35);
 
+    if ((quietT += dt) > IDLE_S && !idle) { idle = true; fade = 1; }
+    if (idle) { heal(0.3 * dt); return; } // na sala de descanso o castelo fica congelado
     // monstros: andam até o robô e batem de tempos em tempos
     for (const f of foesHere()) {
       f.flash -= dt; f.lunge -= dt;
@@ -570,6 +601,8 @@
     // passo novo do Claude: só os ao vivo, nunca o replay do feed
     event(kind) {
       if (!S) return;
+      quietT = 0;
+      if (idle) { idle = false; fade = 1; }
       if (kind === 'read') strike(1);
       else if (kind === 'search' || kind === 'hits') { strike(1); setTimeout(() => strike(1), 120); setTimeout(() => strike(1), 240); }
       else if (kind === 'edit') strike(3, 'EDIT');
